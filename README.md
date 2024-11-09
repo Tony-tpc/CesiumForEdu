@@ -10,6 +10,7 @@ git clone https://github.com/Tony-tpc/CesiumForEdu
 cd CesiumForEdu
 npm install
 ```
+> 此时出现 `node_modules` 文件夹
 
 ### 运行
 ```shell
