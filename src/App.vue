@@ -1,9 +1,9 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import ShowGITF from './components/ShowGITF.vue'
 </script>
 
 <template>
-  <HelloWorld />
+  <ShowGITF />
 </template>
 
 <style >
