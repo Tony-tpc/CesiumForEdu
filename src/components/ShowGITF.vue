@@ -7,7 +7,7 @@ import { onMounted } from "vue";
 import * as Cesium from 'cesium';
 
 onMounted(() => {
-  const modelUrl = '/models/mountain/snowy_mountains.gltf';
+  const modelUrl = '/models/snowy_mountains.glb';
   // const modelUrl = '/models/canyon_and_mountains_gltf/scene.gltf';
   // "D:\Yang\html\models\canyon_and_mountains_gltf\scene.gltf"
   let viewer = new Cesium.Viewer('cesiumContainer', {
