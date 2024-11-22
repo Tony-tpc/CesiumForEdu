@@ -16,6 +16,7 @@ onMounted(() => {
     navigationHelpButton: true, //帮助信息按钮
     geocoder: true, //是否显示地名查找控件
     terrainProvider: new Cesium.EllipsoidTerrainProvider(), // 使用椭球地形
+    requestRenderMode : true //显式渲染
   });
   viewer._cesiumWidget._creditContainer.style.display = "none";
   viewer.scene.globe.show = false;
@@ -28,8 +29,9 @@ onMounted(() => {
   viewer.scene.skyAtmosphere.destroy();
   viewer.scene.skyAtmosphere = undefined;
   viewer.scene.debugShowFramesPerSecond = true;
+  viewer.scene.requestRenderMode = true;
   viewer.scene.backgroundColor = new Cesium.Color(10, 10, 10, 1);
-
+  // viewer.scene.globe.maximumScreenSpaceError = 4; // 默认  1.0
   // 设置模型的初始位置
   var position = Cesium.Cartesian3.fromDegrees(10, 10, 100); // 经度、纬度、海拔高度
   var heading = Cesium.Math.toRadians(45); // 头朝向
@@ -45,6 +47,7 @@ onMounted(() => {
     url: modelUrl,  // 替换为本地GLTF文件的路径
     modelMatrix: modelMatrix,
     asynchronous: true,
+    incrementalLoad: true,
     scale: 5 // 调整模型的比例
   }).then(function (model) {
 
