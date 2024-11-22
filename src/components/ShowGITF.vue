@@ -44,6 +44,7 @@ onMounted(() => {
   Cesium.Model.fromGltfAsync({    // url: 'cesium/Specs/Data/Models/glTF-2.0/BoxWithCopyright/glTF/Box.gltf',  // 替换为本地GLTF文件的路径
     url: modelUrl,  // 替换为本地GLTF文件的路径
     modelMatrix: modelMatrix,
+    asynchronous: true,
     scale: 5 // 调整模型的比例
   }).then(function (model) {
 
