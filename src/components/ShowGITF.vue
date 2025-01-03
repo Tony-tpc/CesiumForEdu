@@ -16,7 +16,7 @@ onMounted(() => {
     navigationHelpButton: true, //帮助信息按钮
     geocoder: true, //是否显示地名查找控件
     terrainProvider: new Cesium.EllipsoidTerrainProvider(), // 使用椭球地形
-    requestRenderMode : true //显式渲染
+    requestRenderMode: true //显式渲染
   });
   viewer._cesiumWidget._creditContainer.style.display = "none";
   viewer.scene.globe.show = false;
@@ -40,21 +40,24 @@ onMounted(() => {
   var hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
   // 获取正确的矩阵来定位模型
   var modelMatrix = Cesium.Transforms.headingPitchRollToFixedFrame(position, hpr);
-
-
   // 使用 Cesium.Model 加载 GLTF 模型
   Cesium.Model.fromGltfAsync({    // url: 'cesium/Specs/Data/Models/glTF-2.0/BoxWithCopyright/glTF/Box.gltf',  // 替换为本地GLTF文件的路径
     url: modelUrl,  // 替换为本地GLTF文件的路径
     modelMatrix: modelMatrix,
     asynchronous: true,
     incrementalLoad: true,
-    scale: 5 // 调整模型的比例
+    scale: 5, // 调整模型的比例
+    gltf: {
+      draco: {
+        compressionLevel: 10 // 设置压缩等级
+      }
+    }
   }).then(function (model) {
 
 
     if (model) {
       viewer.scene.primitives.add(model);
-
+      model.maximumScreenSpaceError = 2;
       // 使用 setTimeout 循环检查 model.ready
       function checkModelReady() {
         if (model.ready) {
