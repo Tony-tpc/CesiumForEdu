@@ -1,7 +1,8 @@
 <template>
-  <div style="padding: 20px" @click="clearScene">
+  <div style="padding: 20px;position: absolute;top: 200px;left: 350px" @click="clearScene">
     <el-button type="danger">清空面板</el-button>
   </div>
+  <div class="page2"></div>
 </template>
 
 <script setup>
@@ -40,5 +41,10 @@ const clearScene = () => {
 </script>
 
 <style scoped>
-
+.page2 {
+  position: absolute;
+  top: 100vh;
+  width: 100%;
+  height: 100vh;
+}
 </style>

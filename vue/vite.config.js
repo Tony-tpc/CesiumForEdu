@@ -7,6 +7,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers"
 import ElementPlus from "unplugin-element-plus/vite"
+import compression from 'vite-plugin-compression'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -21,6 +22,11 @@ export default defineConfig({
     }),
     Components({
       resolvers:[ElementPlusResolver({ importStyle:'sass' })],
+    }),
+    compression({
+      ext: '.gz', // 生成 .gz 文件
+      algorithm: 'gzip',
+      threshold: 10240, // 10KB 以上才压缩
     }),
   ],
   resolve: {
