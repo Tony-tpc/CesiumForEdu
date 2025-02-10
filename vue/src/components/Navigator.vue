@@ -115,6 +115,7 @@ let ticking = false;
 
 // 更换主题
 const updateTheme = throttle(() => {
+  // if (data.activeIndex === '/navigator/home') {} // 之后可根据需要改变主题切换逻辑
   if (!ticking) {
     ticking = true;
     requestAnimationFrame(() => {
