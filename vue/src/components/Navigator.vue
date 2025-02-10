@@ -115,16 +115,21 @@ let ticking = false;
 
 // 更换主题
 const updateTheme = throttle(() => {
-  // if (data.activeIndex === '/navigator/home') {} // 之后可根据需要改变主题切换逻辑
-  if (!ticking) {
-    ticking = true;
-    requestAnimationFrame(() => {
-      data.scrollY = window.scrollY;
-      data.isDarkMode = (data.scrollY > 640 && data.scrollY < (TopChangeMode.value - 50))
-          || data.scrollY > (TopChangeMode.value + 6.3 * window.innerHeight - 140); // 进入第二屏或第四屏时，切换深色模式
-      data.logo = data.isDarkMode? darkLogo : lightLogo;
-      ticking = false;
-    });
+  // 之后可根据需要改变主题切换逻辑
+  if (data.activeIndex === '/navigator/geo-graph') {
+    data.isDarkMode = true;
+    data.logo = darkLogo;
+  } else {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(() => {
+        data.scrollY = window.scrollY;
+        data.isDarkMode = (data.scrollY > 640 && data.scrollY < (TopChangeMode.value - 50))
+            || data.scrollY > (TopChangeMode.value + 6.3 * window.innerHeight - 140); // 进入第二屏或第四屏时，切换深色模式
+        data.logo = data.isDarkMode? darkLogo : lightLogo;
+        ticking = false;
+      });
+    }
   }
 },200);
 
