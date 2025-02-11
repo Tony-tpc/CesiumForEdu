@@ -45,16 +45,13 @@ onMounted(async () => {
   app = new PIXI.Application({
     view: canvas.value,
     autoStart: true,
-    resizeTo: window,
+    x:0,
+    y:0,
     backgroundAlpha: 0,
     autoDensity:true,
     antialias:true,
     resolution:window.devicePixelRatio,
   });
-
-  // 设置canvas的大小，确保它填满窗口
-  canvas.value.width = window.innerWidth;
-  canvas.value.height = window.innerHeight;
 
   try {
     // 加载 Live2D 模型
@@ -63,10 +60,8 @@ onMounted(async () => {
     model = await Live2DModel.from("https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json");
     app.stage.addChild(model);
 
-    // 调整模型大小和位置，使其居中显示
-    model.scale.set(0.1);
-    model.x = canvas.value.width / 2.5;
-    model.y = canvas.value.height / 4;
+    // 调整模型大小
+    model.scale.set(0.2);
 
     console.log("Live2D 模型加载成功");
   } catch (error) {
@@ -98,10 +93,8 @@ onMounted(async () => {
 /* Live2D */
 canvas {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
+  top: 40%;
+  right: -25%;
   border: none;
   z-index: 100;
 }

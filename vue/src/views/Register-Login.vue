@@ -1,351 +1,413 @@
 <template>
-  <div class="shell">
-    <div class="container a-container" id="a-container">
-      <form action="" method="" class="form" id="a-form">
-        <h2 class="form_title title">创建账号</h2>
-        <div class="form_icons">
-          <i class="iconfont icon-QQ"></i>
-          <i class="iconfont icon-Wechat"></i>
-        </div>
-        <span class="form_span">选择注册方式或电子邮箱注册</span>
-        <input type="text" class="form_input" placeholder="请输入用户名">
-        <input type="email" class="form_input" placeholder="请输入邮箱">
-        <input type="password" class="form_input" placeholder="请输入密码">
-        <button class="form_button button submit">SIGN UP</button>
-      </form>
-    </div>
-
-    <div class="container b-container" id="b-container">
-      <form action="" method="" class="form" id="b-form">
-        <h2 class="form_title title">登入账号</h2>
-        <div class="form_icons">
-          <i class="iconfont icon-QQ"></i>
-          <i class="iconfont icon-Wechat"></i>
-        </div>
-        <span class="form_span">选择登录方式或电子邮箱登录</span>
-        <input type="email" class="form_input" placeholder="请输入邮箱">
-        <input type="password" class="form_input" placeholder="请输入密码">
-        <a href="#" class="form_link">忘记密码？</a>
-        <button class="form_button button submit">SIGN IN</button>
-      </form>
-    </div>
-
-    <div class="switch" id="switch-cnt">
-      <div class="switch_circle"></div>
-      <div class="switch_circle switch_circle-t"></div>
-      <div class="switch_container" id="switch-c1">
-        <h2 class="switch_title title" style="letter-spacing:0;">Welcome Back!</h2>
-        <p class="switch_description description">已经有账号了？去登录</p>
-        <button class="switch_button button switch-btn">SIGN IN</button>
+  <!--  vanta背景  -->
+  <div class="vanta-container" ref="vantaSection"></div>
+  <!--  父级容器 -->
+  <div class="container">
+    <!--  前页注册  -->
+    <div class="register">
+      <!--    注册标题  -->
+      <div class="register-title">
+        创&nbsp;建&nbsp;账&nbsp;号
       </div>
-
-      <div class="switch_container is-hidden" id="switch-c2">
-        <h2 class="switch_title title" style="letter-spacing:0;">Hello Friend!</h2>
-        <p class="switch_description description">去注册一个账号</p>
-        <button class="switch_button button switch-btn">SIGN UP</button>
-
+      <br><br>
+      <!--    注册表单  -->
+      <div class="register-form">
+        <el-form
+            ref="ruleFormRefReg"
+            style="max-width: 600px"
+            :model="ruleFormReg"
+            :rules="rulesReg"
+            label-width="auto"
+            class="demo-ruleForm"
+            :size="formSize"
+            status-icon
+        >
+          <el-form-item label="用户名" prop="name">
+            <el-input v-model="ruleFormReg.name" placeholder="请输入用户名"/>
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="ruleFormReg.password" type="password" show-password autocomplete="off" placeholder="长度至少6位"/>
+          </el-form-item>
+          <el-form-item label="确认密码" prop="checkPass">
+            <el-input v-model="ruleFormReg.checkPass" type="password" show-password autocomplete="off" placeholder="******"/>
+          </el-form-item>
+          <el-form-item label="电子邮箱" prop="email">
+            <el-input v-model="ruleFormReg.email" placeholder="name@example.com"/>
+          </el-form-item>
+          <el-form-item label="年级" prop="grade">
+            <el-select v-model="ruleFormReg.grade" placeholder="请选择年级">
+              <el-option label="高一" value="High-1" />
+              <el-option label="高二" value="High-2" />
+              <el-option label="高三" value="High-3" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="ruleFormReg.gender">
+              <el-radio value="male">男</el-radio>
+              <el-radio value="female">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="备注" prop="desc">
+            <el-input v-model="ruleFormReg.desc"  type="textarea" :autosize="{ minRows:2 , maxRows:4 }" :maxlength="100" resize="none" show-word-limit placeholder="我们期待了解您希望在我们的平台上实现的目标。"/>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="submitFormReg(ruleFormRefReg)">
+              注册
+            </el-button>
+            <el-button @click="resetFormReg(ruleFormRefReg)">
+              重置
+            </el-button>
+            <div>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              已有账号？去
+            </div>
+            <el-button class="transition-button" @click="transitionToSignin">
+              登录
+            </el-button>
+          </el-form-item>
+        </el-form>
       </div>
-
+    </div>
+    <!--  后页登录  -->
+    <div class="sign-in">
+      <div class="sign-in-title">
+        登&nbsp;入&nbsp;账&nbsp;号
+      </div>
+      <div class="sign-in-form">
+        <el-form
+            ref="ruleFormRefSign"
+            style="max-width: 600px"
+            :model="ruleFormSign"
+            :rules="rulesSign"
+            label-width="auto"
+            class="demo-ruleForm"
+            :size="formSize"
+        >
+          <el-form-item label="用户名/邮箱" prop="input">
+            <el-input v-model="ruleFormSign.input" placeholder="请输入用户名或者邮箱"/>
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="ruleFormSign.password" type="password" show-password autocomplete="off" placeholder="******"/>
+          </el-form-item>
+          <el-form-item>
+            <el-button class="passForgetButton" @click=""><div>忘记密码？</div></el-button>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="submitFormSign(ruleFormRefSign)">
+              登录
+            </el-button>
+            <el-button @click="resetFormSign(ruleFormRefSign)">
+              重置
+            </el-button>
+            <div>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              还没有账号？去
+            </div>
+            <el-button class="transition-button" @click="transitionToRegister">
+              注册
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-let switchCtn = document.querySelector("#switch-cnt");
-let switchC1 = document.querySelector("#switch-c1");
-let switchC2 = document.querySelector("#switch-c2");
-let switchCircle = document.querySelectorAll(".switch_circle");
-let switchBtn = document.querySelectorAll(".switch-btn");
-let aContainer = document.querySelector("#a-container");
-let bContainer = document.querySelector("#b-container");
-let allButtons = document.querySelectorAll(".submit");
+import { ref, onMounted, onBeforeUnmount, reactive } from 'vue';
+import { gsap } from "gsap";
 
-let getButtons = (e) => e.preventDefault() /*
-    如果希望表单能够正常提交，可以在 getButtons 函数中添加逻辑来处理表单数据，
-    或者根据需要移除 e.preventDefault()。*/
-let changeform = (e) => {
-  // 修改类名
-  switchCtn.classList.add("is-gx");
-  setTimeout(function () {
-    switchCtn.classList.remove("is-gx");
-  }, 1500)
-  switchCtn.classList.toggle("is-txr");
-  switchCircle[0].classList.toggle("is-txr");
-  switchCircle[1].classList.toggle("is-txr");
+// Vanta背景初始化
+const vantaEffect = ref(null);
+const vantaSection = ref(null);
 
-  switchC1.classList.toggle("is-hidden");
-  switchC2.classList.toggle("is-hidden");
-  aContainer.classList.toggle("is-txl");
-  bContainer.classList.toggle("is-txl");
-  bContainer.classList.toggle("is-z");
+const setVanta = () => {
+  if (window.VANTA) {
+    vantaEffect.value = window.VANTA.GLOBE({
+      el: vantaSection.value,
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0xd1174f,
+      size: 0.9,
+      backgroundColor: 0x251444,
+    });
+  }
+};
+
+// 注册表单信息
+const formSize = ref('default');
+const ruleFormRefReg = ref(null);
+const ruleFormReg = reactive({
+  name: '',
+  grade: '',
+  gender: '',
+  email:'',
+  password:'',
+  checkPass:'',
+  desc: '',
+});
+
+// 注册表单校验
+// 密码校验
+const validatePass = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请输入密码'));
+  } else {
+    if (ruleFormReg.checkPass !== '') {
+      if (!ruleFormRefReg.value) return;
+      ruleFormRefReg.value.validateField('checkPass');
+    }
+    callback();
+  }
+};
+
+// 确认密码校验
+const validatePass2 = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'));
+  } else if (value !== ruleFormReg.password) {
+    callback(new Error("两次密码输入不一致！"));
+  } else {
+    callback();
+  }
+};
+
+// 邮箱校验
+const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const validateEmail = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请输入电子邮箱'));
+  } else if (!emailPattern.test(value)) {
+    callback(new Error('不合法的电子邮箱！'));
+  } else {
+    callback();
+  }
 }
-// 点击切换
-let shell = (e) => { // 可以考虑在 shell 函数中直接绑定事件，而不是在每次加载时移除和重新添加事件监听器。
-  allButtons.forEach(button => {
-    button.removeEventListener("click", getButtons); // 移除之前的事件监听
-    button.addEventListener("click", getButtons);
+
+// 校验规则
+const rulesReg = reactive({
+  name: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 2, max: 20, message: '用户名应为2-20个字符', trigger: 'blur' },
+  ],
+  password: [
+      { required: true,validator: validatePass, trigger: 'blur' },
+      { min:6, max: 25, message:'密码应为6-25字符', trigger: 'blur'}
+  ],
+  checkPass: [
+      { required: true,validator: validatePass2, trigger: 'blur' }
+  ],
+  grade: [
+    {
+      required: false,
+      message: '请选择年级',
+      trigger: 'change',
+    },
+  ],
+  gender: [
+    {
+      required: false,
+      message: '请选择性别',
+      trigger: 'change',
+    },
+  ],
+  email: [
+    {
+      required: true,
+      validator: validateEmail,
+      trigger: 'blur',
+    },
+  ],
+  desc: [
+    { required: false },
+  ],
+});
+
+// 注册按钮
+const submitFormReg = async (formEl) => {
+  if (!formEl) return;
+  await formEl.validate((valid, fields) => {
+    if (valid) {
+      console.log('submit!');
+    } else {
+      console.log('error submit!', fields);
+    }
   });
-  switchBtn.forEach(button => {
-    button.removeEventListener("click", changeform); // 移除之前的事件监听
-    button.addEventListener("click", changeform);
-  });
+};
+
+// 重置按钮
+const resetFormReg = (formEl) => {
+  if (!formEl) return;
+  formEl.resetFields();
 }
-window.addEventListener("load", shell);
+
+// 转换动画
+const transitionToSignin = () => {
+  gsap.timeline()
+      .to('.register',{display:'none',opacity:0})
+      .to('.sign-in',{display:'block',opacity:1});
+}
+
+// 登录表单
+// 登录表单信息
+const ruleFormRefSign = ref(null);
+const ruleFormSign = reactive({
+  input: '',
+  password: '',
+  email:'',
+  name:'',
+});
+
+// 输入校验
+const validateInput = (rule, value, callback) => {
+  if (emailPattern.test(value)) {
+    ruleFormSign.email = value;
+  } else {
+    ruleFormSign.name = value;
+  }
+  callback();
+}
+
+// 校验规则
+const rulesSign = reactive({
+  input: [
+    { required: false, validator: validateInput,trigger: 'change' },
+  ],
+  password: [
+    { required: false,validator: validatePass, trigger: 'change' },
+    { min:6, max: 25, message:'密码应为6-25字符', trigger: 'blur'}
+  ],
+});
+
+// 登录按钮
+const submitFormSign = async (formEl) => {
+  if (!formEl) return;
+  await formEl.validate((valid, fields) => {
+    if (valid) {
+      // 此处需分析是否为用户名
+      console.log('submit!');
+    } else {
+      console.log('error submit!', fields);
+    }
+    console.log(`formEl:${formEl}`)
+  });
+};
+
+// 重置按钮
+const resetFormSign = (formEl) => {
+  if (!formEl) return;
+  formEl.resetFields();
+}
+
+// 转换动画
+const transitionToRegister = () => {
+  gsap.timeline()
+      .to('.sign-in',{display:'none',opacity:0})
+      .to('.register',{display:'block',opacity:1});
+}
+
+onMounted(() => {
+  setVanta();
+});
+
+onBeforeUnmount(() => {
+  if (vantaEffect.value) {
+    vantaEffect.value.destroy();
+  }
+});
+
+
 </script>
 
 <style scoped>
-.shell {
-  position: relative;
-  width: 1000px;
-  min-width: 1000px;
-  min-height: 600px;
-  height: 600px;
+/* vanta背景 */
+.vanta-container {
+  width: 100%;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 大容器 */
+.container {
+  position: absolute;
+  top: 10%;
+  left: 12%;
+  width: 600px;
+  height: 70%;
   padding: 25px;
   background-color: #ecf0f3;
-  box-shadow: 10px 10px 10px #d1d9e6, -10px -10px 10px #f9f9f9;
   border-radius: 12px;
   overflow: hidden;
-}
-
-/* 设置响应式 */
-@media (max-width:1200px) {
-  .shell {
-    transform: scale(0.7);
-  }
-}
-
-@media (max-width:1000px) {
-  .shell {
-    transform: scale(0.6);
-  }
-}
-
-@media (max-width:800px) {
-  .shell {
-    transform: scale(0.5);
-  }
-}
-
-@media (max-width:600px) {
-  .shell {
-    transform: scale(0.4);
-  }
-}
-
-.container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: absolute;
-  top: 0;
-  width: 600px;
-  height: 100%;
-  padding: 25px;
-  background-color: #ecf0f3;
   transition: 1.25s;
 }
 
-.form {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-}
-
-.iconfont {
-  margin: 0 5px;
-  border: rgba(0, 0, 0, 0.5) 2px solid;
-  border-radius: 50%;
-  font-size: 25px;
-  padding: 3px;
-  opacity: 0.5;
-  transition: 0.1s;
-}
-
-.iconfont:hover {
-  opacity: 1;
-  transition: 0.15s;
-  cursor: pointer;
-}
-
-.form_input {
-  width: 350px;
-  height: 40px;
-  margin: 4px 0;
-  padding-left: 25px;
-  font-size: 13px;
-  letter-spacing: 0.15px;
-  border: none;
-  outline: none;
-  background-color: #ecf0f3;
-  transition: 0.25s ease;
-  border-radius: 8px;
-  box-shadow: inset 2px 2px 4px #d1d9e6, inset -2px -2px 4px #f9f9f9;
-}
-
-.form_input:focus {
-  box-shadow: inset 4px 4px 4px #d1d9e6, inset -4px -4px 4px #f9f9f9;
-}
-
-.form_span {
-  margin-top: 30px;
-  margin-bottom: 12px;
-}
-
-.form_link {
-  color: #181818;
-  font-size: 15px;
-  margin-top: 25px;
-  border-bottom: 1px solid #a0a5a8;
-  line-height: 2;
-}
-
-.title {
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 3;
-  color: #181818;
-  letter-spacing: 10px;
-}
-
-.description {
-  font-size: 14px;
-  letter-spacing: 0.25px;
+/* 注册标题 */
+.register-title {
+  position: absolute;
+  top: 5%;
+  left: 36%;
+  font-size: 32px;
+  font-weight: bold;
   text-align: center;
-  line-height: 1.6;
+  z-index: 2;
 }
 
-.button {
-  width: 180px;
-  height: 50px;
-  border-radius: 25px;
-  margin-top: 50px;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 1.15px;
-  background-color: #4B70E2;
-  color: #f9f9f9;
-  box-shadow: 8px 8px 16px #d1d9e6, -8px -8px 16px #f9f9f9;
+/* 注册表单 */
+.register-form {
+  position: absolute;
+  top: 17%;
+  left: 22%;
+  z-index: 2;
+}
+
+/* 注册登录转换按钮 */
+.transition-button {
   border: none;
-  outline: none;
+  background-color: transparent;
+  padding: 0;
+  color: #f94604;
 }
 
-.a-container {
-  z-index: 100;
-  left: calc(100% - 600px);
-}
-
-.b-container {
-  left: calc(100% - 600px);
-  z-index: 0;
-}
-
-.switch {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 400px;
-  padding: 50px;
-  z-index: 200;
-  transition: 1.25s;
-  background-color: #ecf0f3;
-  overflow: hidden;
-  box-shadow: 4px 4px 10px #d1d9e6, -4px -4px 10px #d1d9e6;
-}
-
-.switch_circle {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background-color: #ecf0f3;
-  box-shadow: inset 8px 8px 12px #b8bec7, inset -8px -8px 12px #fff;
-  bottom: -60%;
-  left: -60%;
-  transition: 1.25s;
-}
-
-.switch_circle-t {
-  top: -30%;
-  left: 60%;
-  width: 300px;
-  height: 300px;
-}
-
-.switch_container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  position: absolute;
-  width: 400px;
-  padding: 50px 55px;
-  transition: 1.25s;
-}
-
-.switch_button {
-  cursor: pointer;
-}
-
-.switch_button:hover,
-.submit:hover {
-  box-shadow: 6px 6px 10px #d1d9e6, -6px -6px 10px #f9f9f9;
-  transform: scale(0.985);
-  transition: 0.25s;
-}
-
-.switch_button:active,
-.switch_button:focus {
-  box-shadow: 2px 2px 6px #d1d9e6, -2px -2px 6px #f9f9f9;
-  transform: scale(0.97);
-  transition: 0.25s;
-}
-
-.is-txr {
-  left: calc(100% - 400px);
-  transition: 1.25s;
-  transform-origin: left;
-}
-
-.is-txl {
-  left: 0;
-  transition: 1.25s;
-  transform-origin: right;
-}
-
-.is-z {
-  z-index: 200;
-  transition: 1.25s;
-}
-
-.is-hidden {
-  visibility: hidden;
+/* 登录 */
+.sign-in {
+  display: none;
   opacity: 0;
+}
+
+/* 登录标题 */
+.sign-in-title {
   position: absolute;
-  transition: 1.25s;
+  top: 25%;
+  left: 36%;
+  font-size: 32px;
+  font-weight: bold;
+  text-align: center;
+  z-index: 2;
 }
 
-.is-gx {
-  animation: is-gx 1.25s;
+/* 登录表单 */
+.sign-in-form {
+  position: absolute;
+  top: 40%;
+  left: 22%;
+  z-index: 2;
 }
 
-@keyframes is-gx {
-
-  0%,
-  10%,
-  100% {
-    width: 400px;
-  }
-
-  30%,
-  50% {
-    width: 500px;
-  }
+/* 忘记密码按钮 */
+.passForgetButton {
+  position: absolute;
+  right: 0;
+  border: none;
+  background-color: transparent;
+  text-align: right;
 }
 </style>

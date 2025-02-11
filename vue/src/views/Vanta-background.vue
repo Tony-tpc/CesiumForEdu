@@ -4,7 +4,6 @@
 </template>
 
 <script setup>
-
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 
 const vantaEffect = ref(null);
