@@ -1,6 +1,10 @@
 <template>
   <!--  vanta背景  -->
   <div class="vanta-container" ref="vantaSection"></div>
+  <div class="prompt">
+    <!--  提交提示  -->
+    <el-alert title="注册成功！" type="success" show-icon center/>
+  </div>
   <!--  父级容器 -->
   <div class="container">
     <!--  前页注册  -->
@@ -45,13 +49,14 @@
             <el-radio-group v-model="ruleFormReg.gender">
               <el-radio value="male">男</el-radio>
               <el-radio value="female">女</el-radio>
+              <el-radio value="other">其他</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="备注" prop="desc">
             <el-input v-model="ruleFormReg.desc"  type="textarea" :autosize="{ minRows:2 , maxRows:4 }" :maxlength="100" resize="none" show-word-limit placeholder="我们期待了解您希望在我们的平台上实现的目标。"/>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="submitFormReg(ruleFormRefReg)">
+            <el-button type="primary" @click="submitFormReg(ruleFormRefReg)" :disabled="data.isDisabled">
               注册
             </el-button>
             <el-button @click="resetFormReg(ruleFormRefReg)">
@@ -116,6 +121,12 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, reactive } from 'vue';
 import { gsap } from "gsap";
+import axios from 'axios'
+import router from "@/router/index.js";
+
+const data = reactive({
+  isDisabled: false,
+})
 
 // Vanta背景初始化
 const vantaEffect = ref(null);
@@ -144,10 +155,11 @@ const formSize = ref('default');
 const ruleFormRefReg = ref(null);
 const ruleFormReg = reactive({
   name: '',
-  grade: '',
-  gender: '',
-  email:'',
   password:'',
+  email:'',
+  gender: '',
+  grade: '',
+  avatar:'',
   checkPass:'',
   desc: '',
 });
@@ -234,6 +246,12 @@ const submitFormReg = async (formEl) => {
   await formEl.validate((valid, fields) => {
     if (valid) {
       console.log('submit!');
+      data.isDisabled = true;
+      gsap.to('.prompt',{y:'+=50',opacity:1});
+      router.replace('/');
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } else {
       console.log('error submit!', fields);
     }
@@ -311,6 +329,36 @@ const transitionToRegister = () => {
       .to('.register',{display:'block',opacity:1});
 }
 
+// 注册AJAX
+const registerUser = async (userData) => {
+  const formData = new FormData();
+  formData.append('name', userData.name);
+  formData.append('password', userData.password);
+  formData.append('email', userData.email);
+  if (userData.gender) {
+    formData.append('gender', userData.gender);
+  }
+  if (userData.grade) {
+    formData.append('grade', userData.grade);
+  }
+  if (userData.desc) {
+    formData.append('desc', userData.desc);
+  }
+  if (userData.avatar) {
+    formData.append("avatar", userData.avatar);
+  }
+  try {
+    const response = await axios.post("http://127.0.0.1:8040/api/register/", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    console.log(response.data.message); // 注册成功
+  } catch (error) {
+    console.error(error.response.data.error); // 处理错误信息
+  }
+};
+
 onMounted(() => {
   setVanta();
 });
@@ -334,6 +382,17 @@ onBeforeUnmount(() => {
   left: 0;
   z-index: -1;
   pointer-events: none;
+}
+
+/* 提示词 */
+.prompt {
+  position: absolute;
+  top: 8%;
+  left: 15%;
+  width: 550px;
+  height: auto;
+  z-index: 5;
+  opacity: 0;
 }
 
 /* 大容器 */
