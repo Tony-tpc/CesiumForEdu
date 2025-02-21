@@ -1,7 +1,7 @@
 <template>
 <!--  导航栏开始-->
-      <div class="navigator">
-          <div style="padding-left: 200px">
+      <div class="navigator" id="navigator">
+          <div style="padding-left: 80px">
             <el-menu
                 class="menu-no-border"
                 mode="horizontal"
@@ -13,8 +13,7 @@
                 :default-openeds="['/navigator']"
                 style="background-color: transparent"
             >
-              <el-affix>
-              <div>
+              <div class="navigator-logo">
                 <el-link href="/navigator/home"
                          :underline="false"
                 >
@@ -25,10 +24,10 @@
                   />
                 </el-link>
               </div>
-              </el-affix>
               <div class="menu-items">
                 <el-sub-menu index="/"
                              :class="['regular', 'custom-sub-menu', { 'dark-theme': data.isDarkMode }]"
+                             :style="{ marginLeft: data.margin + 'px' }"
                 >
                   <template #title>
                     <span :class="['menu-fonts',{ 'dark-theme': data.isDarkMode }]">智绘天地</span>
@@ -66,13 +65,32 @@
                 </el-menu-item>
                 <el-menu-item index="/navigator/smart-recs"
                               :class="['regular',{ 'dark-theme': data.isDarkMode },{ 'active-item-4': data.activeIndex === '/navigator/smart-recs' }]"
+                              :style="{ marginRight: data.margin + 'px' }"
                 >
                   <span :class="['menu-fonts',{ 'dark-theme': data.isDarkMode }]" :style="{ color: data.activeIndex === '/navigator/smart-recs' ? '#fffdf3' : 'var(--text-color)' }">智荐学堂</span>
                 </el-menu-item>
 <!--                <el-button text style="align-items: center;height: 55px">-->
 <!--                  <el-icon size="30px"><Search /></el-icon>-->
 <!--                </el-button>-->
-                <div class="user">
+                <!--  已经登录  -->
+                <div v-if="isLoggedIn" class="user">
+                  <el-dropdown>
+                    <span :class="['logged-in',{ 'dark-theme': data.isDarkMode }]">
+                      <img v-if="userState.user.avatar" :src="userState.user.avatar" alt="头像">
+                      <span v-else>{{ userState.user.username }}</span>
+<!--      v-if='userState.user.avatar'      v-else userState.user.name          -->
+                    </span>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item><span class="menu-fonts" style="font-size: 16px">个人中心</span></el-dropdown-item>
+                        <el-dropdown-item><span class="menu-fonts" style="font-size: 16px">设置</span></el-dropdown-item>
+                        <el-dropdown-item @click="handleLogout"><span class="menu-fonts" style="font-size: 16px">退出</span></el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+                <!--  暂未登录  -->
+                <div v-else class="user">
                   <el-button link :icon="User" :class="['register',{ 'dark-theme' : data.isDarkMode }]" @click="router.push('/register-login')">
                     <span>注册/登录</span>
                   </el-button>
@@ -89,9 +107,11 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, provide,ref } from "vue";
+import { reactive, onMounted, provide, ref, watch, nextTick } from "vue";
 import { User } from "@element-plus/icons-vue";
 import router from "@/router/index.js";
+import { useRoute } from "vue-router";
+import { userState, isLoggedIn, clearUser, autoLogin } from "@/store/userStore";
 import lightLogo from "@/assets/mountain-fffdf3.svg";
 import darkLogo from "@/assets/mountain-0d534b.svg";
 import { throttle } from "lodash";
@@ -102,13 +122,17 @@ const data = reactive({
   isDarkMode : false,                             // 切换主题
   logo: lightLogo,                                // 切换logo配色
   scrollY: 0,                                     // 主题切换判据
+  margin: 346,                                    // 导航栏左右边距
 });
+
+// 获取当前路由
+const route = useRoute();
 
 // Home第三屏切换主题色
 const TopChangeMode = ref(6200);
 const isLoading = ref(false);
 provide('TopChangeMode',TopChangeMode);
-provide('isLoading',isLoading)
+provide('isLoading',isLoading);
 
 // 防止频繁触发（延迟200ms）
 let ticking = false;
@@ -119,12 +143,15 @@ const updateTheme = throttle(() => {
   if (data.activeIndex === '/navigator/geo-graph') {
     data.isDarkMode = true;
     data.logo = darkLogo;
+  } else if (data.activeIndex === '/navigator/landform') {
+    data.isDarkMode = false;
+    data.logo = lightLogo;
   } else {
     if (!ticking) {
       ticking = true;
       requestAnimationFrame(() => {
         data.scrollY = window.scrollY;
-        data.isDarkMode = (data.scrollY > 640 && data.scrollY < (TopChangeMode.value - 50))
+        data.isDarkMode = (data.scrollY > window.innerHeight - 50 && data.scrollY < (TopChangeMode.value - 50))
             || data.scrollY > (TopChangeMode.value + 6.3 * window.innerHeight - 140); // 进入第二屏或第四屏时，切换深色模式
         data.logo = data.isDarkMode? darkLogo : lightLogo;
         ticking = false;
@@ -138,21 +165,68 @@ const handleSelect = (index) => {
   data.activeIndex = index;
 };
 
+// 保存选中的路由
 const savedIndex = localStorage.getItem('activeIndex');
 if (savedIndex) {
   data.activeIndex = savedIndex;
 }
 
+// 退出登录
+const handleLogout = () => {
+  clearUser();  // 清除用户信息
+  router.push(data.activeIndex);  // 刷新页面
+  window.location.reload();
+};
+
+// 配合加载动画
+const loadAnimation = (path) => {
+  const scrollY = localStorage.getItem('scrollPosition');
+  if (scrollY === '0') {
+    if (isLoading.value || path === '/navigator/smart-recs') {
+      const nav = document.querySelector('.navigator');
+
+      // 强制触发 reflow，确保动画重新执行
+      nav.style.opacity = '0';
+      void nav.offsetHeight;
+      if (isLoading.value) {
+        gsap.timeline()
+            .set('.navigator',{pointerEvents:'none'})
+            .to('.navigator',{opacity:1,duration:1.5,delay:2.6})
+            .set('.navigator',{pointerEvents: 'auto'})
+      } else {
+        gsap.timeline()
+            .set('.navigator',{pointerEvents:'none'})
+            .to('.navigator',{opacity:1,duration:1.5,delay:2})
+            .set('.navigator',{pointerEvents: 'auto'})
+      }
+    } else
+      document.querySelector('.navigator').style.opacity = 1;
+  } else
+    document.querySelector('.navigator').style.opacity = 1;
+}
+
 onMounted(() => {
+  autoLogin();
+  updateTheme();
   // 自动调节主题色
   window.addEventListener('scroll',updateTheme);
-  // 配合加载动画
-  if (isLoading.value)
-    gsap.to('.navigator',{opacity:1,duration:1.5},2.6);
-  else
-    document.querySelector('.navigator').style.opacity = 1;
+  // 获取左右间距
+  const getMargin = () => {
+    data.margin = (document.getElementById('navigator').offsetWidth - 135 * 4 - 25 * 4 - 151) / 2
+  }
+  getMargin();
+  // 响应式调节导航栏
+  window.addEventListener('resize',getMargin);
+  loadAnimation(route.path);
 })
 
+// 路由一发生变化就更新主题
+watch(route,() => {
+  updateTheme();
+  nextTick(() => {
+    loadAnimation(route.path);
+  })
+});
 </script>
 
 <style scoped>
@@ -176,11 +250,16 @@ onMounted(() => {
   overflow: hidden;
 }
 
+/* 导航栏logo */
+.navigator-logo {
+  position: absolute;
+  top: 5px;
+  left: 0;
+}
+
 /* 菜单项 */
 .regular {
-  display: flex;
   justify-content: center;
-  align-items: center;
   left: 0;
   top: 0;
   width: 135px;
@@ -193,6 +272,9 @@ onMounted(() => {
 
 /* 自定义子目录 */
 .custom-sub-menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   position: relative;
   padding: 0;
   overflow: hidden;
@@ -231,7 +313,7 @@ onMounted(() => {
 }
 
 /* 菜单字体 */
-.menu-fonts {
+.menu-fonts,.el-dropdown-item {
   font-size: 18px;
   font-weight: bold;
   color: var(--text-color);
@@ -240,14 +322,12 @@ onMounted(() => {
 
 /* 用户 */
 .user {
-  margin:0 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  right: 80px;
 }
 
 /* 注册/登录项，与菜单项风格作区分 */
-.register {
+.register,.logged-in {
   height: 42px;
   width: 135px;
   background-color: transparent;
@@ -256,10 +336,18 @@ onMounted(() => {
   color: var(--bg-color);/* 此样式文字与背景主题互换 */
   font-size: 16px;
   font-weight: bold;
+  outline: none;
 }
-.register:hover {
+.register:hover,.logged-in:hover {
   border-color: var(--bg-color) !important;
   color: var(--bg-color);
+}
+
+/* 登录改动(防止过长用户名) */
+.logged-in {
+  border: none;
+  margin-top: 10px;
+  height: 20px;
 }
 
 /* 主页全屏显示 */

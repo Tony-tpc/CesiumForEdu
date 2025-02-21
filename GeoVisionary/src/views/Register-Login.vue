@@ -3,7 +3,8 @@
   <div class="vanta-container" ref="vantaSection"></div>
   <div class="prompt">
     <!--  提交提示  -->
-    <el-alert title="注册成功！" type="success" show-icon center/>
+    <el-alert :title="data.failurePrompt" type="warning" show-icon center v-if="data.failureMessage"/>
+    <el-alert :title="data.successPrompt" type="success" show-icon center v-else/>
   </div>
   <!--  父级容器 -->
   <div class="container">
@@ -26,8 +27,8 @@
             :size="formSize"
             status-icon
         >
-          <el-form-item label="用户名" prop="name">
-            <el-input v-model="ruleFormReg.name" placeholder="请输入用户名"/>
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="ruleFormReg.username" placeholder="请输入用户名"/>
           </el-form-item>
           <el-form-item label="密码" prop="password">
             <el-input v-model="ruleFormReg.password" type="password" show-password autocomplete="off" placeholder="长度至少6位"/>
@@ -40,16 +41,16 @@
           </el-form-item>
           <el-form-item label="年级" prop="grade">
             <el-select v-model="ruleFormReg.grade" placeholder="请选择年级">
-              <el-option label="高一" value="High-1" />
-              <el-option label="高二" value="High-2" />
-              <el-option label="高三" value="High-3" />
+              <el-option label="高一" value="G1" />
+              <el-option label="高二" value="G2" />
+              <el-option label="高三" value="G3" />
             </el-select>
           </el-form-item>
           <el-form-item label="性别" prop="gender">
             <el-radio-group v-model="ruleFormReg.gender">
-              <el-radio value="male">男</el-radio>
-              <el-radio value="female">女</el-radio>
-              <el-radio value="other">其他</el-radio>
+              <el-radio value="M">男</el-radio>
+              <el-radio value="F">女</el-radio>
+              <el-radio value="O">其他</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="备注" prop="desc">
@@ -98,7 +99,7 @@
             <el-button class="passForgetButton" @click=""><div>忘记密码？</div></el-button>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="submitFormSign(ruleFormRefSign)">
+            <el-button type="primary" @click="submitFormSign(ruleFormRefSign)" :disabled="data.isDisabled">
               登录
             </el-button>
             <el-button @click="resetFormSign(ruleFormRefSign)">
@@ -119,13 +120,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, reactive } from 'vue';
+import { ref, onMounted, onBeforeUnmount, reactive, computed } from 'vue';
 import { gsap } from "gsap";
 import axios from 'axios'
 import router from "@/router/index.js";
+import { setUser, clearUser } from '../store/userStore.js'
 
 const data = reactive({
   isDisabled: false,
+  timeLeft: 3,
+  successPrompt:computed(() => `注册成功！还剩 ${data.timeLeft} 秒自动跳转到首页`),
+  failurePrompt:computed(() => `注册失败！${data.failureMessage}`),
+  failureMessage:'',
 })
 
 // Vanta背景初始化
@@ -154,7 +160,7 @@ const setVanta = () => {
 const formSize = ref('default');
 const ruleFormRefReg = ref(null);
 const ruleFormReg = reactive({
-  name: '',
+  username: '',
   password:'',
   email:'',
   gender: '',
@@ -165,10 +171,25 @@ const ruleFormReg = reactive({
 });
 
 // 注册表单校验
+// 用户名合法校验
+const namePattern = /^[\u4e00-\u9fa5A-Za-z0-9_]+$/;
+const validateName = (rule, value, callback) => {
+  if (!value) {
+    callback(new Error('请输入用户名'));
+  } else if (!namePattern.test(value)) {
+    callback(new Error('用户名只能包含汉字、字母、数字和下划线'));
+  } else {
+    callback();
+  }
+};
+
 // 密码校验
+const passwordPattern = /^[A-Za-z0-9_]+$/;
 const validatePass = (rule, value, callback) => {
   if (value === '') {
     callback(new Error('请输入密码'));
+  } else if (!passwordPattern.test(value)) {
+    callback(new Error('密码只能包含数字、字母和下划线'));
   } else {
     if (ruleFormReg.checkPass !== '') {
       if (!ruleFormRefReg.value) return;
@@ -183,7 +204,7 @@ const validatePass2 = (rule, value, callback) => {
   if (value === '') {
     callback(new Error('请再次输入密码'));
   } else if (value !== ruleFormReg.password) {
-    callback(new Error("两次密码输入不一致！"));
+    callback(new Error("两次密码输入不一致"));
   } else {
     callback();
   }
@@ -195,7 +216,7 @@ const validateEmail = (rule, value, callback) => {
   if (value === '') {
     callback(new Error('请输入电子邮箱'));
   } else if (!emailPattern.test(value)) {
-    callback(new Error('不合法的电子邮箱！'));
+    callback(new Error('不合法的电子邮箱'));
   } else {
     callback();
   }
@@ -203,8 +224,8 @@ const validateEmail = (rule, value, callback) => {
 
 // 校验规则
 const rulesReg = reactive({
-  name: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
+  username: [
+    { required: true, validator: validateName, trigger: 'blur' },
     { min: 2, max: 20, message: '用户名应为2-20个字符', trigger: 'blur' },
   ],
   password: [
@@ -240,20 +261,74 @@ const rulesReg = reactive({
   ],
 });
 
+// 注册AJAX
+const registerUser = async (userData) => {
+  const formData = new FormData();
+  formData.append("username", userData.username);
+  formData.append("password", userData.password);
+  formData.append("email", userData.email);
+  if (userData.gender) formData.append("gender", userData.gender);
+  if (userData.grade) formData.append("grade", userData.grade);
+  if (userData.desc) formData.append("desc", userData.desc);
+  if (userData.avatar) formData.append("avatar", userData.avatar);
+
+  try {
+    const response = await fetch("http://127.0.0.1:8040/api/register/", {
+      method: "POST",
+      body: formData, // FormData 会自动设置正确的 `Content-Type`
+    });
+    const userResponse = await response.json();
+    if (!response.ok) {
+      let errors;
+      if (userResponse.errors.username && userResponse.errors.email) {
+        errors = '用户名和邮箱均已存在';
+      } else if (userResponse.errors.email) {
+        errors = '邮箱已存在';
+      } else {
+        errors = '用户名已存在';
+      }
+      throw new Error(errors);
+    }
+
+    console.log(`response = ${JSON.stringify(userResponse)}`);
+
+    // 确保包含 access_token 和 refresh_token
+    if (userResponse.access_token && userResponse.refresh_token) {
+      setUser(userResponse);
+    } else {
+      throw new Error("注册成功但未返回令牌");
+    }
+
+    data.isDisabled = true;
+    gsap.to(".prompt", { y: "+=50", opacity: 1 });
+
+    // 3秒后跳转首页
+    let timer = setInterval(() => {
+      if (data.timeLeft > 0) {
+        data.timeLeft -= 1;
+      } else {
+        clearInterval(timer);
+        router.push("/");
+      }
+    }, 1000);
+  } catch (error) {
+    console.error("注册错误:", error.message);
+
+    // 处理错误信息
+    data.failureMessage = error.message || "注册失败";
+    data.isDisabled = false;
+    gsap.timeline()
+        .to(".prompt", { y: "+=50", opacity: 1})
+        .to(".prompt", { y: "-=50", opacity: 0,delay: 3})
+  }
+};
+
 // 注册按钮
 const submitFormReg = async (formEl) => {
   if (!formEl) return;
   await formEl.validate((valid, fields) => {
     if (valid) {
-      console.log('submit!');
-      data.isDisabled = true;
-      gsap.to('.prompt',{y:'+=50',opacity:1});
-      router.replace('/');
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    } else {
-      console.log('error submit!', fields);
+      registerUser(Object.assign({}, ruleFormReg));
     }
   });
 };
@@ -278,7 +353,7 @@ const ruleFormSign = reactive({
   input: '',
   password: '',
   email:'',
-  name:'',
+  username:'',
 });
 
 // 输入校验
@@ -286,7 +361,7 @@ const validateInput = (rule, value, callback) => {
   if (emailPattern.test(value)) {
     ruleFormSign.email = value;
   } else {
-    ruleFormSign.name = value;
+    ruleFormSign.username = value;
   }
   callback();
 }
@@ -302,17 +377,55 @@ const rulesSign = reactive({
   ],
 });
 
+// 登录AJAX
+const loginUser = async (userData) => {
+  const formData = new FormData();
+  if (userData.username) formData.append("username", userData.username);
+  if (userData.email) formData.append("email", userData.email);
+  formData.append("password", userData.password);
+  try {
+    const response = await fetch("http://127.0.0.1:8040/api/login/", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('用户名或密码错误');
+    }
+
+    const userResponse = await response.json();
+    setUser(userResponse);
+
+    data.isDisabled = true;
+    gsap.to(".prompt", { y: "+=50", opacity: 1 });
+
+    // 3秒后跳转首页
+    let timer = setInterval(() => {
+      if (data.timeLeft > 0) {
+        data.timeLeft -= 1;
+      } else {
+        clearInterval(timer);
+        router.push("/");
+      }
+    }, 1000);
+  } catch (error) {
+    console.error(error.message);
+
+    data.failureMessage = error.message || "登录失败";
+    data.isDisabled = false;
+    gsap.to(".prompt", { y: "+=50", opacity: 1 });
+  }
+}
+
 // 登录按钮
 const submitFormSign = async (formEl) => {
   if (!formEl) return;
   await formEl.validate((valid, fields) => {
     if (valid) {
-      // 此处需分析是否为用户名
-      console.log('submit!');
+      loginUser(Object.assign({}, ruleFormSign));
     } else {
       console.log('error submit!', fields);
     }
-    console.log(`formEl:${formEl}`)
   });
 };
 
@@ -328,36 +441,6 @@ const transitionToRegister = () => {
       .to('.sign-in',{display:'none',opacity:0})
       .to('.register',{display:'block',opacity:1});
 }
-
-// 注册AJAX
-const registerUser = async (userData) => {
-  const formData = new FormData();
-  formData.append('name', userData.name);
-  formData.append('password', userData.password);
-  formData.append('email', userData.email);
-  if (userData.gender) {
-    formData.append('gender', userData.gender);
-  }
-  if (userData.grade) {
-    formData.append('grade', userData.grade);
-  }
-  if (userData.desc) {
-    formData.append('desc', userData.desc);
-  }
-  if (userData.avatar) {
-    formData.append("avatar", userData.avatar);
-  }
-  try {
-    const response = await axios.post("http://127.0.0.1:8040/api/register/", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    console.log(response.data.message); // 注册成功
-  } catch (error) {
-    console.error(error.response.data.error); // 处理错误信息
-  }
-};
 
 onMounted(() => {
   setVanta();

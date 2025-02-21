@@ -19,7 +19,7 @@ const router = createRouter({
         { path: 'insight-lab', name: 'insight-lab', meta:{ title:'探知问学 | 智绘山河' }, component: () => import('../components/InsightLab.vue'), },
         { path: 'smart-recs', name: 'smart-recs', meta:{ title:'智荐学堂 | 智绘山河' }, component: () => import('../components/SmartRecs.vue'), },
     ]},
-    { path: '/quizzes', name: 'quizzes', meta:{ title:'测试 | 智绘山河' }, component: () => import('../views/Quizzes.vue'), },
+    { path: '/quizzes', name: 'quizzes', meta:{ title:'测试 | 智绘山河' }, component: () => import('../views/test/Quizzes.vue'), },
     { path: '/register-login', name: 'register-login', meta:{ title:'登录 | 智绘山河' }, component: () => import('../views/Register-Login.vue'), },
     { path: '/loading', name: 'loading-test', meta:{ title:'加载 | 智绘山河' }, component: () => import('../views/test/Loading.vue'), },
     { path: '/test', name: 'test', meta:{ title:'各种测试' }, component: () => import('../views/TestEarth1.vue'), },

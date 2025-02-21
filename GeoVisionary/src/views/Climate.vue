@@ -29,15 +29,23 @@ onMounted(() => {
   // 展示模型动画
   ScrollTrigger.create({
     trigger:'.section2',
-    start:'top-=400 top',
+    start:'top-=200 top',
     end:'+=200',
     scrub:true,
     animation:
         gsap.timeline()
-            .to('.section1',{y:'-=100',opacity:0})
-            .from('.section2',{y:'+=100',opacity:0},"<")
-  })
-})
+            .to('.section1',{opacity:0})
+  });
+  ScrollTrigger.create({
+    trigger:'.section1',
+    start:'top top',
+    end:'+=300',
+    scrub:true,
+    animation:
+        gsap.timeline()
+            .from('.section2',{opacity:0})
+  });
+});
 
 </script>
 

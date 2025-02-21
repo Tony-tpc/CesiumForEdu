@@ -1,5 +1,30 @@
 <template>
-  <div id="video-particles" class="particles-container"></div>
+  <div class="LLM-input-output">
+    <el-alert title="请注意，输入不能为空" type="error" center show-icon class="warning-alert" :closable="false"/>
+    <div>
+      <el-input
+        v-model="data.textInput"
+        :rows="2"
+        type="textarea"
+        resize="none"
+        :autosize="{minRows: 1, maxRows: 6}"
+        placeholder="您可以在这里输入您想和模型对话的内容！"
+        class="inputArea"
+      />
+      <el-button v-if="!isGenerating" type="primary" @click="handleChatWithLocalLLM" class="submit-btn" :disabled="data.isDisabled">
+        <el-icon  ><Top /></el-icon>
+      </el-button>
+      <el-button v-else type="primary" @click="handleStopLLMGeneration" class="submit-btn">
+        <el-icon  ><Close /></el-icon>
+      </el-button>
+    </div>
+    <div class="outputArea" @click="changeOutputArea">
+      <ChatContent :showCursor="showCursor" :content="content"></ChatContent>
+    </div>
+  </div>
+  <div class="live2Dmodel" @click="changeDisplay"></div>
+<!--  <img src="@/assets/2k_earth_daymap.jpg" style="position: absolute;top: 0;left: 0;z-index: -10;" />-->
+<!--  <div id="video-particles" class="particles-container"></div>-->
   <!--  <div class="test-fixed">我是测试 Fixed</div>-->
 <!--  <div class="page2" id="earth-background">-->
 <!--    <el-button type="primary" style="position: absolute;top: 250px;left: 300px">基本按钮</el-button>-->
@@ -11,141 +36,228 @@
 
 <!--  </div>-->
 
-<!--  <section>-->
-<!--    <div class="container section1">-->
-<!--      <div class="earth" id="earth-background"></div>-->
-<!--      <div class="page1" id="star-background"></div>-->
-<!--      <div class="buttons" style="top: 600px;left: 350px">-->
-<!--        <el-button type="primary" @click="changeSpeed">-->
-<!--          <span v-if="data.rotateSpeed > 0">停止转动</span>-->
-<!--          <span v-else>继续转动</span>-->
-<!--        </el-button>-->
-<!--      </div>-->
-<!--      <div class="hero-title glowing-title floating-title">-->
-<!--        智绘山河-->
-<!--      </div>-->
-<!--      <div class="line1 hero-subtitle">AI 赋能探索</div>-->
-<!--      <div class="line2 hero-subtitle">让地理更智慧</div>-->
-<!--      <div class="line3 hero-subtitle">用科技丈量世界</div>-->
-<!--    </div>-->
-<!--  </section>-->
-<!--  <section>-->
-
-<!--    <div class="container section2">-->
-<!--      &lt;!&ndash;    过渡文字  &ndash;&gt;-->
-<!--      <div class="transition-words">-->
-<!--        <span class="c1">探索</span>-->
-<!--        <span class="c2">世界，</span>-->
-<!--        <span class="c3">从</span>-->
-<!--        <span class="c4">这里</span>-->
-<!--        <span class="c5">启程。</span>-->
-<!--      </div>-->
-<!--      &lt;!&ndash;    智绘天地介绍  &ndash;&gt;-->
-<!--      <div class="page2">-->
-<!--        <h2 class="section-title">🌍 直观可视化，探索地理奥秘</h2>-->
-<!--        <div class="step-indicator">Step 1: 了解</div>-->
-<!--        <p class="section-subtitle">沉浸式 3D 体验，让你身临其境</p>-->
-<!--        <p class="section-content">通过 3D 交互地球、气候模型等，让地理知识变得生动形象。</p>-->
-<!--      </div>-->
-<!--      &lt;!&ndash;    进度条  &ndash;&gt;-->
-<!--      <el-progress-->
-<!--          :percentage="data.percentage[0]"-->
-<!--          :text-inside="true"-->
-<!--          :stroke-width="30"-->
-<!--          striped-->
-<!--          striped-flow-->
-<!--          :duration="5"-->
-<!--          class="progress"-->
-<!--      >-->
-<!--        <span v-if="data.percentage[0] < 25">智绘天地</span>-->
-<!--        <span v-else-if="data.percentage[0] < 50">知象图谱</span>-->
-<!--        <span v-else-if="data.percentage[0] < 75">探知问学</span>-->
-<!--        <span v-else>智荐学堂</span>-->
-<!--        <span>{{ parseInt(data.percentage[0]) }}%</span>-->
-<!--      </el-progress>-->
-<!--      &lt;!&ndash;    知象图谱介绍  &ndash;&gt;-->
-<!--      <div class="page3">-->
-<!--        <h2 class="section-title">📊 知识图谱 + AI 互动</h2>-->
-<!--        <div class="step-indicator">Step 2: 学习</div>-->
-<!--        <p class="section-subtitle">结构化知识，AI 助教解答</p>-->
-<!--        <p class="section-content">利用 AI 技术构建地理知识图谱，ChatGPT 即时答疑。</p>-->
-<!--      </div>-->
-<!--      &lt;!&ndash;    探知问学介绍  &ndash;&gt;-->
-<!--      <div class="page4">-->
-<!--        <h2 class="section-title">📝 智能测评，精准诊断</h2>-->
-<!--        <div class="step-indicator">Step 3: 测试</div>-->
-<!--        <p class="section-subtitle">找到薄弱点，针对性提升</p>-->
-<!--        <p class="section-content">个性化智能习题，AI 自动解析，助你突破难点。</p>-->
-<!--      </div>-->
-<!--      &lt;!&ndash;    智荐学堂介绍  &ndash;&gt;-->
-<!--      <div class="page5">-->
-<!--        <h2 class="section-title">🎯 个性化推荐，定制学习路线</h2>-->
-<!--        <div class="step-indicator">Step 4: 巩固</div>-->
-<!--        <p class="section-subtitle">智能推荐，学习不再盲目</p>-->
-<!--        <p class="section-content">根据你的学习轨迹，AI 自动推送最适合的资源。</p>-->
-<!--      </div>-->
-<!--    </div>-->
-<!--  </section>-->
 </template>
 
 <script setup>
-import {onBeforeUnmount, onMounted, reactive} from "vue";
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import MeteorClass from "@/classes/meteor.js";
-import * as THREE from "three";
+import {onBeforeUnmount, onMounted, reactive, ref, onUpdated} from "vue";
+import { marked } from "marked";
+import  DOMPurify from "dompurify";
+import {userState} from "@/store/userStore.js"
+// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// import MeteorClass from "@/classes/meteor.js";
+// import * as THREE from "three";
 import {gsap} from "gsap";
 import {ScrollTrigger} from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger)
 
-let resize
+// let resize
 
 const data = reactive({
   percentage:0,
-
+  textInput:"",
+  changeArea:false,
+  displayEverything:true,
+  isDisabled:false,
+  x:0,
+  y:0,
 })
+
+const content = ref('');
+const showCursor = ref(false);
+const responseText = ref(""); // 逐步存放 LLM 生成的内容
+const responseHTML = ref(""); // 存储解析后的 HTML
+const isGenerating = ref(false); // 控制加载状态
+const outputArea = ref(null);
+let controller = new AbortController();  // 用于控制请求
+let reader = null;  // 读取流
+
+// 找到最后一个非空的文本结点
+const getLastTextNode = (dom) => {
+  const children = dom.childNodes;
+  for(let i = children.length - 1; i >= 0; i--) {
+    const node = children[i];
+    if(node.nodeType === Node.TEXT_NODE && /\S/.test(node.nodeValue)) {
+      node.nodeValue = node.nodeValue.replace(/\s+$/,"");
+      return node;
+    } else if(node.nodeType === Node.ELEMENT_NODE) {
+      const last = getLastTextNode(node);
+      if (last) {
+        return last;
+      }
+    }
+  }
+  return null;
+}
+
+// 更新光标
+const updateCursor = () => {
+  const outputAreaDom = outputArea.value;
+  const lastText = getLastTextNode(outputAreaDom);
+  const textNode = document.createTextNode('\u200b');
+  if (lastText) {
+    lastText.parentElement.appendChild(textNode);
+  } else {
+    outputAreaDom.appendChild(textNode);
+  }
+  const domRect = outputAreaDom.getBoundingClientRect();
+  const range = document.createRange();
+  range.setStart(textNode,0);
+  range.setEnd(textNode,0);
+  const rect = range.getBoundingClientRect();
+  data.x = rect.left - domRect.left;
+  data.y = rect.top - domRect.top;
+  textNode.remove();
+};
+
+const chatHistory = ref([
+  { role: "system", content: "你是一位地理老师，你的学生目前遇到了一些地理问题，你需要耐心且详尽地帮助他解决问题，并通俗易懂地讲解。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。" }
+]);
+
+// 向本地LLM发送流式请求
+const chatWithLocalLLM = async () => {
+  content.value = ""; // 清空历史内容
+  isGenerating.value = true; // 进入生成状态
+  showCursor.value = true; // 显示光标
+
+  // 检验localStorage，需删除！！！
+  localStorage.setItem("text", '我向本地LLM发送了请求');
+
+  // 创建新的控制器
+  controller = new AbortController();
+  const signal = controller.signal;
+
+  if(data.textInput) {
+    // 把用户输入添加到历史记录
+    chatHistory.value.push({ role: "user", content: data.textInput });
+    try {
+      const response = await fetch("http://localhost:1234/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "deepseek-r1-distill-qwen-14b", // phi-4 deepseek-r1-distill-llama-8b deepseek-r1-distill-qwen-14b
+          messages: chatHistory.value,
+          temperature: 0.6,
+          max_tokens: 8192,
+          stream: true, // 启用流式返回
+        }),
+        signal, // 绑定信号
+      });
+
+      if (!response.ok || !response.body) throw new Error("LLM 请求失败");
+
+      // 获取可读流
+      reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // 先解码成字符串
+        const chunk = decoder.decode(value, { stream: true });
+
+        // 解析 JSON，提取内容
+        const lines = chunk.split("\n"); // API 可能返回多行
+        for (const line of lines) {
+          if (line.trim().startsWith("data:")) {
+            try {
+              const json = JSON.parse(line.replace("data: ", ""));
+              if (json.choices && json.choices[0].delta.content) {
+                content.value += json.choices[0].delta.content; // 追加生成的文本
+              }
+            } catch (err) {
+              console.error("解析错误:", err);
+            }
+          }
+        }
+      }
+      // 生成完成后，把 LLM 的回复也加入历史记录
+      chatHistory.value.push({ role: "assistant", content: content.value });
+      console.log(chatHistory.value);
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("LLM 请求已被取消");
+      } else {
+        console.error("LLM 生成错误:", error);
+      }
+    } finally {
+      isGenerating.value = false; // 结束生成状态
+      showCursor.value = false; // 隐藏光标
+    }
+  }
+};
+
+// 中断LLM生成函数
+const stopLLMGeneration = () => {
+  if (isGenerating.value) {
+    controller.abort();  // 终止 fetch 请求
+    if (reader) reader.cancel();  // 终止流读取
+    isGenerating.value = false;
+    console.log("LLM 输出已中断");
+  }
+};
+
+// 点击交互按钮
+const handleChatWithLocalLLM = () => {
+  if (data.textInput) {
+    chatWithLocalLLM();
+    data.textInput = "";
+  } else  {
+    data.isDisabled = true;
+    gsap.to('.warning-alert',{y:'+=20',opacity:1,duration:0.7,pointerEvents:'auto',ease:'none'});
+    setTimeout( async () => {
+       await gsap.to('.warning-alert',{y:'-=20',opacity:0,duration:0.7,pointerEvents:'none',ease:'none'});
+       data.isDisabled = false;
+    },3000)
+  }
+}
+
+// 点击终止按钮
+const handleStopLLMGeneration = () => {
+  stopLLMGeneration();
+}
+
+// 放大输出结果
+const changeOutputArea = () => {
+  if (!data.changeArea) {
+    gsap.timeline()
+        .to('.outputArea',{top:'10%',height:'48%'})
+    data.changeArea = true;
+  } else {
+    gsap.timeline()
+        .to('.outputArea',{top:'20%',height:'30%'})
+    data.changeArea = false;
+  }
+}
+
+// 显示/隐藏输入/输出/提交按钮
+const changeDisplay = () => {
+  if (data.displayEverything) {
+    gsap.timeline()
+        .to(['.outputArea','.inputArea','.submit-btn'],{opacity:0,ease:'power2.out'})
+        .set(['.outputArea','.inputArea','.submit-btn'],{display:'none'})
+    data.displayEverything = false;
+  } else {
+    gsap.timeline()
+        .set(['.outputArea','.inputArea','.submit-btn'],{display:'block'})
+        .to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'})
+    data.displayEverything = true;
+  }
+}
 
 onMounted(() => {
   /* particlesJS.load(@dom-id, @path-json, @callback (optional)); */
-  particlesJS("video-particles", {
-    particles: {
-      number: { value: 60 },
-      size: { value: 2 },
-      move: { speed: 2 },
-      opacity: { anim: { enable: true, speed: 0.5 } },
-    },
-  });
-  // ScrollTrigger.create({
-  //   trigger: '.section2',
-  //   start: 'top+=50 top',
-  //   end: '+=5000',
-  //   scrub: true,
-  //   pin:true,
-  //   animation:
-  //       gsap.timeline()
-  //           .to('.transition-words',{opacity:0},0)
-  //           .from('.progress',{opacity:0},0)
-  //           .from('.page2',{opacity:0,duration:1},0)
-  //           .to(data.percentage,{endArray:[100],duration:8,ease:'none'},1)
-  //           .to('.page2',{x:() => '-=' + document.querySelector('.section2').offsetWidth},3)
-  //           .from('.page3',{x:() => '+=' + document.querySelector('.section2').offsetWidth},3)
-  //           .to('.page3',{x:() => '-=' + document.querySelector('.section2').offsetWidth},5)
-  //           .from('.page4',{x:() => '+=' + document.querySelector('.section2').offsetWidth},5)
-  //           .to('.page4',{x:() => '-=' + document.querySelector('.section2').offsetWidth},7)
-  //           .from('.page5',{x:() => '+=' + document.querySelector('.section2').offsetWidth},7)
-  // })
-  // const scene = new THREE.Scene();
-  // const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  // camera.position.set(0, 0, 5);
-  //
-  // const renderer = new THREE.WebGLRenderer({ antialias: true });
-  // renderer.setSize(window.innerWidth, window.innerHeight);
-  // renderer.setClearColor(new THREE.Color(0x404040))
-  // document.getElementById('earth-background').appendChild(renderer.domElement);
-  //
-  // const controls = new OrbitControls(camera, renderer.domElement);
-  // controls.enableDamping = true;
-  // controls.dampingFactor = 0.05;
+  // particlesJS("video-particles", {
+  //   particles: {
+  //     number: { value: 60 },
+  //     size: { value: 2 },
+  //     move: { speed: 2 },
+  //     opacity: { anim: { enable: true, speed: 0.5 } },
+  //   },
+  // });
+
+
 
 // // 地球
 //   const textureLoader = new THREE.TextureLoader();
@@ -255,13 +367,83 @@ onMounted(() => {
   //
   // })();
 })
-
 onBeforeUnmount( () => {
   // window.removeEventListener('resize',resize);
 });
 </script>
 
 <style scoped>
+/* 用户输入框 */
+:deep(.el-textarea__inner) {
+  border-radius: 12px !important;
+  line-height: 1.8 !important;
+  padding-bottom: 30px;
+}
+.inputArea {
+  position: absolute;
+  bottom: 10%;
+  left: 25%;
+  width: 52%;
+  font-size: 16px;
+  border-radius: 50px !important;
+  z-index: 1;
+}
+
+/* 输入按钮 */
+.submit-btn {
+  position: absolute;
+  bottom: 11%;
+  right: 24%;
+  width: 30px;
+  height: 30px;
+  border-radius: 100%;
+  margin: 0;
+  padding: 7px 0;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  z-index: 1;
+}
+
+/* 空输入提示 */
+.warning-alert {
+  position: absolute;
+  top: 9%;
+  right: 25%;
+  width: 24%;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* LLM输出框 */
+.outputArea {
+  position: absolute;
+  top: 20%;
+  left: 25%;
+  width: 50%;
+  height: 30%;
+  color: #0d0f1a;
+  border: 1px solid #0d0f1a;
+  border-radius: 30px;
+  padding: 15px;
+  font-size: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  line-height: 1.8;
+}
+
+
+/* live2D模型 */
+.live2Dmodel {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20%;
+  height: 60%;
+  background-color: #0d0f1a;
+}
 
 .background {
   position: absolute;

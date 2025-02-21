@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp,defineAsyncComponent } from 'vue'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus'
@@ -7,6 +7,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
 import '@icon-park/vue-next/styles/index.css'
 import '@/assets/global.css'
+import { userState } from "./store/userStore";  // 引入 userStore
 
 const app = createApp(App)
 
@@ -17,5 +18,15 @@ app.use(ElementPlus,{
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
+// 全局检查 localStorage，保持用户登录状态
+if (localStorage.getItem("user")) {
+    userState.user = JSON.parse(localStorage.getItem("user"));
+    userState.token = localStorage.getItem("token");
+}
 
+const ChatContent = defineAsyncComponent(() => {
+    import('./components/ChatContent.vue')
+})
+
+app.component('ChatContent', ChatContent)
 app.mount('#app')

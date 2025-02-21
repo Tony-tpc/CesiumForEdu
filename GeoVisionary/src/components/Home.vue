@@ -229,6 +229,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { throttle } from "lodash";
 import router from "@/router/index.js";
+import { enableScroll, disableScroll } from "@/store/usefulFunction.js";
 import { ChinesePavilion as PavilionIcon, Local as LocalIcon, Planet as PlanetIcon, Wind as WindIcon,
     Landscape as LandscapeIcon, Water as WaterIcon, Sapling as SaplingIcon, Chimney as ChimneyIcon
 } from "@icon-park/vue-next";// IDE问题，此部分代码均有用
@@ -242,19 +243,6 @@ const data = reactive({
   section3Top: 0,               // 第三屏位置
   section4Top: 0,               // 第四屏位置
 });
-
-// 禁用滚动
-const disableScroll = () => {
-  document.documentElement.style.overflow = "hidden"; // 禁止滚动
-  document.documentElement.style.pointerEvents = "none"; // 禁止交互
-}
-
-// 恢复滚动
-const enableScroll = () => {
-  document.documentElement.style.overflow = "auto";
-  document.documentElement.style.pointerEvents = "auto";
-  document.documentElement.style.overflowX = "hidden";
-}
 
 // 切换转动速度
 const changeSpeed = () => {
@@ -936,7 +924,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100vh;
   z-index: 5;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* 地球位置 */
@@ -1208,7 +1196,7 @@ onUnmounted(() => {
   left: 0;
   height: 100vh;
   background-color: var(--bg-color);
-  opacity: 0;
+  opacity: 0.7;
   z-index: 6;
 }
 
