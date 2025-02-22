@@ -59,7 +59,7 @@ const refreshAccessToken = async () => {
         const response = await fetch("http://localhost:8040/api/token/refresh/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh: userState.refresh_token }),
+            body: JSON.stringify({ refresh_token: userState.refresh_token }),
         });
 
         if (!response.ok) {
@@ -68,9 +68,9 @@ const refreshAccessToken = async () => {
 
         const data = await response.json();
 
-        if (data.access) {
-            userState.access_token = data.access;
-            localStorage.setItem("access_token", data.access);
+        if (data.access_token) {
+            userState.access_token = data.access_token;
+            localStorage.setItem("access_token", data.access_token);
             console.log("Access Token 已刷新");
         } else {
             throw new Error("未返回新的 Access Token");

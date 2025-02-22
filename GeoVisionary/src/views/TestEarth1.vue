@@ -65,8 +65,8 @@ const data = reactive({
 
 const content = ref('');
 const showCursor = ref(false);
-const responseText = ref(""); // 逐步存放 LLM 生成的内容
-const responseHTML = ref(""); // 存储解析后的 HTML
+// const responseText = ref(""); // 逐步存放 LLM 生成的内容
+// const responseHTML = ref(""); // 存储解析后的 HTML
 const isGenerating = ref(false); // 控制加载状态
 const outputArea = ref(null);
 let controller = new AbortController();  // 用于控制请求

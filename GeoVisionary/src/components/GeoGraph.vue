@@ -2,7 +2,30 @@
   <!--  Live2D -->
   <section>
     <div>
-      <canvas ref="canvas" class="live2Dmodel"></canvas>
+      <canvas ref="canvas" class="live2Dmodel" @click="changeDisplay"></canvas>
+      <div class="LLM-input-output">
+        <el-alert title="请注意，输入不能为空" type="error" center show-icon class="warning-alert" :closable="false"/>
+        <div>
+          <el-input
+              v-model="data.textInput"
+              :rows="2"
+              type="textarea"
+              resize="none"
+              :autosize="{minRows: 1, maxRows: 6}"
+              placeholder="您可以在这里输入您想和模型对话的内容！"
+              class="inputArea"
+          />
+          <el-button v-if="!isGenerating" type="primary" @click="handleChatWithLocalLLM" class="submit-btn" :disabled="data.isDisabled">
+            <el-icon  ><Top /></el-icon>
+          </el-button>
+          <el-button v-else type="primary" @click="handleStopLLMGeneration" class="submit-btn">
+            <el-icon  ><Close /></el-icon>
+          </el-button>
+        </div>
+        <div class="outputArea" @click="changeOutputArea">
+          <ChatContent :showCursor="showCursor" :content="content"></ChatContent>
+        </div>
+      </div>
     </div>
   </section>
   <!--  首页背景图及标题 -->
@@ -29,16 +52,28 @@
 <script setup>
 import * as PIXI from 'pixi.js';
 import { Live2DModel } from 'pixi-live2d-display/cubism4';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, reactive } from 'vue';
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
 window.PIXI = PIXI;
 
+const data = reactive({
+  textInput:"",
+  changeArea:false,
+  displayEverything:true,
+  isDisabled:false,
+})
+
 const canvas = ref(null);
 const app = ref(null);
 const model = ref(null);
+const content = ref('');
+const showCursor = ref(false);
+const isGenerating = ref(false); // 控制加载状态
+let controller = new AbortController();  // 用于控制请求
+let reader = null;  // 读取流
 
 // 封装 Live2D 加载逻辑
 const loadLive2D = async () => {
@@ -71,10 +106,144 @@ const loadLive2D = async () => {
 
     // 调整模型大小
     model.value.scale.set(0.2);
+    model.value.x = -120;
 
     console.log("Live2D 模型加载成功");
   } catch (error) {
     console.error("加载失败", error);
+  }
+}
+
+const chatHistory = ref([
+  { role: "system", content: "你是一位经验丰富的地理老师，你的学生目前遇到了一些地理问题，你需要耐心地帮助他解决问题，并通俗易懂地讲解。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。记住，你只能用中文思考和回答。" }
+]);
+
+// 向本地LLM发送流式请求
+const chatWithLocalLLM = async () => {
+  content.value = ""; // 清空历史内容
+  isGenerating.value = true; // 进入生成状态
+  showCursor.value = true; // 显示光标
+
+  // 创建新的控制器
+  controller = new AbortController();
+  const signal = controller.signal;
+
+  if(data.textInput) {
+    // 把用户输入添加到历史记录
+    chatHistory.value.push({ role: "user", content: data.textInput });
+    try {
+      const response = await fetch("http://localhost:1234/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "deepseek-r1-distill-qwen-14b", // phi-4 deepseek-r1-distill-llama-8b deepseek-r1-distill-qwen-14b
+          messages: chatHistory.value,
+          temperature: 0.6,
+          max_tokens: 8192,
+          stream: true, // 启用流式返回
+        }),
+        signal, // 绑定信号
+      });
+
+      if (!response.ok || !response.body) throw new Error("LLM 请求失败");
+
+      // 获取可读流
+      reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // 先解码成字符串
+        const chunk = decoder.decode(value, { stream: true });
+
+        // 解析 JSON，提取内容
+        const lines = chunk.split("\n"); // API 可能返回多行
+        for (const line of lines) {
+          if (line.trim().startsWith("data:")) {
+            try {
+              const json = JSON.parse(line.replace("data: ", ""));
+              if (json.choices && json.choices[0].delta.content) {
+                content.value += json.choices[0].delta.content; // 追加生成的文本
+              }
+            } catch (err) {
+              console.error("解析错误:", err);
+            }
+          }
+        }
+      }
+      // 生成完成后，把 LLM 的回复也加入历史记录
+      chatHistory.value.push({ role: "assistant", content: content.value });
+      console.log(chatHistory.value);
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("LLM 请求已被取消");
+      } else {
+        console.error("LLM 生成错误:", error);
+      }
+    } finally {
+      isGenerating.value = false; // 结束生成状态
+      showCursor.value = false; // 隐藏光标
+    }
+  }
+};
+
+// 中断LLM生成函数
+const stopLLMGeneration = () => {
+  if (isGenerating.value) {
+    controller.abort();  // 终止 fetch 请求
+    if (reader) reader.cancel();  // 终止流读取
+    isGenerating.value = false;
+    console.log("LLM 输出已中断");
+  }
+};
+
+// 点击交互按钮
+const handleChatWithLocalLLM = () => {
+  if (data.textInput) {
+    chatWithLocalLLM();
+    data.textInput = "";
+  } else  {
+    data.isDisabled = true;
+    gsap.to('.warning-alert',{y:'+=20',opacity:1,duration:0.7,pointerEvents:'auto',ease:'none'});
+    setTimeout( async () => {
+      await gsap.to('.warning-alert',{y:'-=20',opacity:0,duration:0.7,pointerEvents:'none',ease:'none'});
+      data.isDisabled = false;
+    },3000)
+  }
+}
+
+// 点击终止按钮
+const handleStopLLMGeneration = () => {
+  stopLLMGeneration();
+}
+
+// 放大输出结果
+const changeOutputArea = () => {
+  if (!data.changeArea) {
+    gsap.timeline()
+        .to('.outputArea',{top:'10%',height:'48%'})
+    data.changeArea = true;
+  } else {
+    gsap.timeline()
+        .to('.outputArea',{top:'20%',height:'30%'})
+    data.changeArea = false;
+  }
+}
+
+// 显示/隐藏输入/输出/提交按钮
+const changeDisplay = () => {
+  if (data.displayEverything) {
+    gsap.timeline()
+        .to(['.outputArea','.inputArea','.submit-btn'],{opacity:0,ease:'power2.out'})
+        .set(['.outputArea','.inputArea','.submit-btn'],{display:'none'})
+    data.displayEverything = false;
+  } else {
+    gsap.timeline()
+        .set(['.outputArea','.inputArea','.submit-btn'],{display:'block'})
+        .to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'})
+    data.displayEverything = true;
   }
 }
 
@@ -102,23 +271,86 @@ onMounted(() => {
   })
 });
 
-// 组件卸载时销毁 WebGL 资源
+// 组件卸载时销毁 WebGL 资源，停止对话
 onUnmounted(() => {
   if (app.value) {
     app.value.destroy(true);
     app.value = null;
     model.value = null;
   }
+  stopLLMGeneration();
 });
 
 </script>
 
 <style scoped>
+/* 用户输入框 */
+:deep(.el-textarea__inner) {
+  border-radius: 12px !important;
+  line-height: 1.8 !important;
+  padding-bottom: 30px;
+}
+.inputArea {
+  position: fixed;
+  bottom: 10%;
+  left: 25%;
+  width: 52%;
+  font-size: 16px;
+  border-radius: 50px !important;
+  z-index: 11;
+}
+
+/* 输入按钮 */
+.submit-btn {
+  position: fixed;
+  bottom: 11%;
+  right: 24%;
+  width: 30px;
+  height: 30px;
+  border-radius: 100%;
+  margin: 0;
+  padding: 7px 0;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  z-index: 11;
+}
+
+/* 空输入提示 */
+.warning-alert {
+  position: fixed;
+  top: 9%;
+  right: 25%;
+  width: 24%;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* LLM输出框 */
+.outputArea {
+  position: fixed;
+  top: 20%;
+  left: 25%;
+  width: 50%;
+  height: 30%;
+  color: #0d0f1a;
+  border: 1px solid #0d0f1a;
+  border-radius: 30px;
+  padding: 15px;
+  font-size: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  line-height: 1.8;
+  z-index: 10;
+}
+
 /* Live2D */
 canvas {
   position: fixed;
   top: 40%;
-  right: -25%;
+  right: -35%;
   border: none;
   z-index: 100;
 }

@@ -20,7 +20,7 @@ const router = createRouter({
         { path: 'smart-recs', name: 'smart-recs', meta:{ title:'智荐学堂 | 智绘山河' }, component: () => import('../components/SmartRecs.vue'), },
     ]},
     { path: '/quizzes', name: 'quizzes', meta:{ title:'测试 | 智绘山河' }, component: () => import('../views/test/Quizzes.vue'), },
-    { path: '/register-login', name: 'register-login', meta:{ title:'登录 | 智绘山河' }, component: () => import('../views/Register-Login.vue'), },
+    { path: '/register-login', name: 'register-login', meta:{ title:'注册/登录 | 智绘山河' }, component: () => import('../views/Register-Login.vue'), },
     { path: '/loading', name: 'loading-test', meta:{ title:'加载 | 智绘山河' }, component: () => import('../views/test/Loading.vue'), },
     { path: '/test', name: 'test', meta:{ title:'各种测试' }, component: () => import('../views/TestEarth1.vue'), },
     { path: '/404', name: '404',meta:{ title:'该页面不存在' }, component: () => import('../views/404.vue'),},

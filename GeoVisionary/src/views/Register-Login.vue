@@ -3,8 +3,8 @@
   <div class="vanta-container" ref="vantaSection"></div>
   <div class="prompt">
     <!--  提交提示  -->
-    <el-alert :title="data.failurePrompt" type="warning" show-icon center v-if="data.failureMessage"/>
-    <el-alert :title="data.successPrompt" type="success" show-icon center v-else/>
+    <el-alert :title="data.failurePrompt" type="warning" show-icon center v-if="data.failureMessage" :closable="false"/>
+    <el-alert :title="data.successPrompt" type="success" show-icon center v-else :closable="false"/>
   </div>
   <!--  父级容器 -->
   <div class="container">
@@ -122,16 +122,16 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, reactive, computed } from 'vue';
 import { gsap } from "gsap";
-import axios from 'axios'
 import router from "@/router/index.js";
-import { setUser, clearUser } from '../store/userStore.js'
+import { setUser } from '../store/userStore.js'
 
 const data = reactive({
   isDisabled: false,
   timeLeft: 3,
-  successPrompt:computed(() => `注册成功！还剩 ${data.timeLeft} 秒自动跳转到首页`),
-  failurePrompt:computed(() => `注册失败！${data.failureMessage}`),
+  successPrompt:computed(() => `${data.pattern}成功！还剩 ${data.timeLeft} 秒自动跳转到首页`),
+  failurePrompt:computed(() => `${data.pattern}失败！${data.failureMessage}`),
   failureMessage:'',
+  pattern:'',
 })
 
 // Vanta背景初始化
@@ -263,6 +263,7 @@ const rulesReg = reactive({
 
 // 注册AJAX
 const registerUser = async (userData) => {
+  data.pattern = '注册';
   const formData = new FormData();
   formData.append("username", userData.username);
   formData.append("password", userData.password);
@@ -379,6 +380,7 @@ const rulesSign = reactive({
 
 // 登录AJAX
 const loginUser = async (userData) => {
+  data.pattern = '登录';
   const formData = new FormData();
   if (userData.username) formData.append("username", userData.username);
   if (userData.email) formData.append("email", userData.email);
@@ -413,7 +415,9 @@ const loginUser = async (userData) => {
 
     data.failureMessage = error.message || "登录失败";
     data.isDisabled = false;
-    gsap.to(".prompt", { y: "+=50", opacity: 1 });
+    gsap.timeline()
+        .to(".prompt", { y: "+=50", opacity: 1 })
+        .to(".prompt", { y: "-=50", opacity: 0,delay: 3})
   }
 }
 
