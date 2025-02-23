@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, defineProps, ref } from "vue";
+import { onMounted, ref } from "vue";
 import {disableScroll, enableScroll} from "@/store/usefulFunction.js";
 import { gsap } from "gsap";
 

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, defineProps } from "vue";
+import { onMounted } from "vue";
 import { gsap } from "gsap";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 gsap.registerPlugin(ScrollToPlugin);
