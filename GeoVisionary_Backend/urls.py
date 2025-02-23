@@ -8,6 +8,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("",lambda request : redirect("admin/")),
     path("api/", include("users.urls")),
+    path("proxy/",include("proxy.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
