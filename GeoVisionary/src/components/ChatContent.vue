@@ -91,7 +91,7 @@ onUpdated(updateCursor);
   background: inherit;
   line-height: 2;
   font-family: 'Roboto Mono',serif;
-  color: #0d0f1a;
+  color: #fffdf3;
 }
 
 /* 父级容器 */
@@ -105,7 +105,7 @@ onUpdated(updateCursor);
   position: absolute;
   width: 3px;
   height: 20px;
-  background: #0d0f1a;
+  background: #fffdf3;
   animation: toggle 0.8s infinite;
   opacity: 0;
   transform:translateY(3px);

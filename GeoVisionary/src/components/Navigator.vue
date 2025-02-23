@@ -78,7 +78,6 @@
                     <span :class="['logged-in',{ 'dark-theme': data.isDarkMode }]">
                       <img v-if="userState.user.avatar" :src="userState.user.avatar" alt="头像">
                       <span v-else>{{ userState.user.username }}</span>
-<!--      v-if='userState.user.avatar'      v-else userState.user.name          -->
                     </span>
                     <template #dropdown>
                       <el-dropdown-menu>
@@ -182,7 +181,7 @@ const handleLogout = () => {
 const loadAnimation = (path) => {
   const scrollY = localStorage.getItem('scrollPosition');
   if (scrollY === '0') {
-    if (isLoading.value || path === '/navigator/smart-recs') {
+    if (isLoading.value || path === '/navigator/smart-recs' || path === '/navigator/insight-lab' || path === '/navigator/geo-graph') {
       const nav = document.querySelector('.navigator');
 
       // 强制触发 reflow，确保动画重新执行

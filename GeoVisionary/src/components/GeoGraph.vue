@@ -1,7 +1,11 @@
 <template>
-  <!--  Live2D -->
+  <section>
+    <!--  加载背景  -->
+    <Loading title=".section1-title" subtitle=".section1-subtitle"></Loading>
+  </section>
   <section>
     <div>
+      <!--  Live2D -->
       <canvas ref="canvas" class="live2Dmodel" @click="changeDisplay"></canvas>
       <div class="LLM-input-output">
         <el-alert title="请注意，输入不能为空" type="error" center show-icon class="warning-alert" :closable="false"/>
@@ -11,14 +15,15 @@
               :rows="2"
               type="textarea"
               resize="none"
-              :autosize="{minRows: 1, maxRows: 6}"
-              placeholder="您可以在这里输入您想和模型对话的内容！"
+              :autosize="{minRows: 1, maxRows: 4}"
+              placeholder="您可以在这里输入您想和小助教对话的内容！"
               class="inputArea"
+              @keydown="handleKeydown"
           />
           <el-button v-if="!isGenerating" type="primary" @click="handleChatWithLocalLLM" class="submit-btn" :disabled="data.isDisabled">
             <el-icon  ><Top /></el-icon>
           </el-button>
-          <el-button v-else type="primary" @click="handleStopLLMGeneration" class="submit-btn">
+          <el-button v-else type="primary" @click="handleStopLLMGeneration" class="stop-btn">
             <el-icon  ><Close /></el-icon>
           </el-button>
         </div>
@@ -40,10 +45,11 @@
     <div class="section1-subtitle">
       在这里，大自然的智慧以线条与节点的形式呈现，连接着山川、星辰及气候的宏伟交响。每一次探索都是心灵之旅，带你穿越知识的海洋，领略地理之美的无限可能。
     </div>
+    <ScrollButton sectionName="#section2" style="z-index: 9"></ScrollButton>
   </section>
   <!--  图谱展示页  -->
   <section>
-    <div class="container section2">
+    <div class="container section2" id="section2">
       <div style="position:absolute;top: 20%;left: 20%;font-size: 32px;font-weight: bold;color: #0d0f1a;width: 500px;">此处展示知识图谱</div>
     </div>
   </section>
@@ -62,7 +68,7 @@ window.PIXI = PIXI;
 const data = reactive({
   textInput:"",
   changeArea:false,
-  displayEverything:true,
+  displayEverything:false,
   isDisabled:false,
 })
 
@@ -113,6 +119,11 @@ const loadLive2D = async () => {
     console.error("加载失败", error);
   }
 }
+
+// 更新live2D位置
+const updatePosition = () => {
+  model.value.x = -0.05 * window.innerWidth;
+};
 
 const chatHistory = ref([
   { role: "system", content: "你是一位经验丰富的地理老师，你的学生目前遇到了一些地理问题，你需要耐心地帮助他解决问题，并通俗易懂地讲解。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。记住，你只能用中文思考和回答。" }
@@ -217,13 +228,34 @@ const handleChatWithLocalLLM = () => {
 // 点击终止按钮
 const handleStopLLMGeneration = () => {
   stopLLMGeneration();
+  setTimeout(() => {
+    const submitBtn = document.querySelector('.submit-btn');
+    if (!submitBtn) {
+      console.warn("按钮不存在，无法设置样式");
+      return;
+    }
+    submitBtn.style.display = "block";
+    submitBtn.style.opacity = "1";
+  }, 40);  // 让浏览器有时间渲染 `.submit-btn`
+}
+
+// 点击回车交互
+const handleKeydown = (e) => {
+  if (e.key === "Enter") {
+    if (!e.shiftKey) {
+      e.preventDefault();
+      handleChatWithLocalLLM();
+    }
+  } else if (e.key === "Escape" && isGenerating.value) {
+    handleStopLLMGeneration();
+  }
 }
 
 // 放大输出结果
 const changeOutputArea = () => {
   if (!data.changeArea) {
     gsap.timeline()
-        .to('.outputArea',{top:'10%',height:'48%'})
+        .to('.outputArea',{top:'10%',height:'55%'})
     data.changeArea = true;
   } else {
     gsap.timeline()
@@ -240,14 +272,14 @@ const changeDisplay = () => {
         .set(['.outputArea','.inputArea','.submit-btn'],{display:'none'})
     data.displayEverything = false;
   } else {
-    gsap.timeline()
-        .set(['.outputArea','.inputArea','.submit-btn'],{display:'block'})
-        .to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'})
+    gsap.set(['.outputArea','.inputArea','.submit-btn'],{display:'block'});
+    gsap.to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'});
     data.displayEverything = true;
   }
 }
 
 onMounted(() => {
+  window.addEventListener('resize', updatePosition);
   // 页面轮播图动画
   gsap.timeline({repeat:-1})
       .to('.image1',{opacity:1,scale:1,duration:3,ease:'none'})
@@ -278,6 +310,7 @@ onUnmounted(() => {
     app.value = null;
     model.value = null;
   }
+  window.removeEventListener('resize', updatePosition);
   stopLLMGeneration();
 });
 
@@ -298,10 +331,12 @@ onUnmounted(() => {
   font-size: 16px;
   border-radius: 50px !important;
   z-index: 11;
+  display: none;
+  opacity: 0;
 }
 
 /* 输入按钮 */
-.submit-btn {
+.submit-btn,.stop-btn {
   position: fixed;
   bottom: 11%;
   right: 24%;
@@ -313,7 +348,14 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   font-size: 18px;
-  z-index: 11;
+  z-index: 12;
+  display: none;
+  opacity: 0;
+}
+
+.stop-btn {
+  display: block;
+  opacity: 1;
 }
 
 /* 空输入提示 */
@@ -326,6 +368,7 @@ onUnmounted(() => {
   border-radius: 20px;
   opacity: 0;
   pointer-events: none;
+  z-index: 15;
 }
 
 /* LLM输出框 */
@@ -343,7 +386,10 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   line-height: 1.8;
-  z-index: 10;
+  z-index: 11;
+  display: none;
+  opacity: 0;
+  background-color: rgba(0,0,0,.8);
 }
 
 /* Live2D */

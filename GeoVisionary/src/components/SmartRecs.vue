@@ -2,8 +2,7 @@
   <!--  首页  -->
   <section>
     <!--  加载背景  -->
-    <div class="loading-background" id="particles-background"></div>
-    <img src="@/assets/mountain-fffdf3.svg" alt="logo" class="loading-logo" />
+    <Loading title=".section1-title" subtitle=".section1-subtitle"></Loading>
     <!--  正文  -->
     <div class="container section1">
       <el-carousel indicator-position="outside" height="100vh" :pause-on-hover="false" :interval="4000" class="carousel">
@@ -18,30 +17,60 @@
         在这里，智慧如星辰般璀璨，指引着你穿越地理的奥秘。每一次推荐都是心灵的启迪，揭开世界之书的一页页神奇篇章，引领探索者在知识的海洋中航行。
       </div>
     </div>
+    <ScrollButton sectionName="#section2" style="z-index: 60"></ScrollButton>
   </section>
   <!--  推荐页  -->
   <section>
-    <div class="container section2">
-      <div style="position:absolute;top: 20%;left: 20%;font-size: 32px;font-weight: bold;color: #0d0f1a;width: 500px;">此处展示推荐内容</div>
+    <div class="container section2" id="section2">
+      <div class="videos-container">
+        <div class="videos-title"></div>
+        <BilibiliVideos :videos="data.videos"></BilibiliVideos>
+        <div class="demo-pagination-block">
+          <el-pagination
+              v-model:current-page="currentPage4"
+              :page-size="12"
+              :size="size"
+              :disabled="disabled"
+              background
+              layout="total, prev, pager, next, jumper"
+              :total="48"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+          />
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { reactive, onMounted } from "vue";
+import { reactive, onMounted, ref } from "vue";
 import ph1 from '@/assets/test/Rec-test-1.jpeg';
 import ph2 from '@/assets/test/Rec-test-2.jpeg';
 import ph3 from '@/assets/test/Rec-test-3.jpeg';
 import ph4 from '@/assets/test/Rec-test-4.jpeg';
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { gsap } from "gsap";
-import {enableScroll,disableScroll} from '@/store/usefulFunction.js'
 gsap.registerPlugin(ScrollTrigger)
 
 const data = reactive({
   carouselItems:[ph1,ph2,ph3,ph4],
+  videos:[{'bvid': 'BV1RN4y1f7Hn','p': 2},{'bvid': 'BV1RN4y1f7Hn','p': 3},{'bvid': 'BV1RN4y1f7Hn','p': 4},
+    {'bvid': 'BV1RN4y1f7Hn','p': 5},{'bvid': 'BV1RN4y1f7Hn','p': 6},{'bvid': 'BV1RN4y1f7Hn','p': 7},
+    {'bvid': 'BV1RN4y1f7Hn','p': 8},{'bvid': 'BV1RN4y1f7Hn','p': 9},{'bvid': 'BV1RN4y1f7Hn','p': 10},
+  ],
 })
-let saveScrollPosition;
+
+const currentPage4 = ref(4)
+const size = ref('default')
+const disabled = ref(false)
+
+const handleSizeChange = (val) => {
+  console.log(`${val} items per page`)
+}
+const handleCurrentChange = (val) => {
+  console.log(`current page: ${val}`)
+}
 
 onMounted(() => {
   // 视差滚动
@@ -58,43 +87,6 @@ onMounted(() => {
     }
   });
 
-  // 保存当前滚动位置
-  saveScrollPosition = () => {
-    localStorage.setItem('scrollPosition', window.scrollY);
-  };
-  window.addEventListener('beforeunload', saveScrollPosition);
-
-  // 加载动画
-  if(localStorage.getItem('scrollPosition') === '0'){
-    (async function () {
-      // 禁用滚动
-      disableScroll()
-
-      // 粒子背景消逝，主页出现
-      particlesJS("particles-background", {
-        particles: {
-          number: { value: 60 },
-          size: { value: 2 },
-          move: { speed: 2 },
-          opacity: { anim: { enable: true, speed: 0.5 } },
-        },
-      });
-      const t = gsap.timeline()
-      t.to("#particles-background", {opacity:0,duration:1.3,delay:0.7})
-          .set('#particles-background', {zIndex:-10})
-
-      // 主标题上升，副标题变上升变出现
-      t.from(['.section1-title','.section1-subtitle'], {opacity:0,y:'+=100',duration:1.6},1)
-
-      // logo移动至与导航栏重合并消失
-      t.to('.loading-logo',{left:105,top:45,duration:1.1,width:50},0.7)
-      // 重启滚动
-      await t.set('.loading-logo',{display:'none',delay:0.4})
-      enableScroll();
-    })();
-  } else {
-    gsap.set(['.loading-logo','#particles-background'], {display:'none'});
-  }
 });
 </script>
 
@@ -116,28 +108,6 @@ onMounted(() => {
   height: 100vh;
   z-index: 5;
   overflow-x: hidden;
-}
-
-/* 加载动画背景 */
-.loading-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  z-index: 90;
-  background-color: #0d0f1a;
-}
-
-/* 加载背景logo */
-.loading-logo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 13%;
-  height: auto;
-  transform: translate(-50%, -50%);
-  z-index: 91;
 }
 
 /* 首页大标题 */
@@ -174,5 +144,10 @@ onMounted(() => {
   top: 100vh;
   left: 0;
   height: 100vh;
+}
+
+.videos-container {
+  position: relative;
+  top: 20%;
 }
 </style>

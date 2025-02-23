@@ -8,6 +8,7 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers"
 import ElementPlus from "unplugin-element-plus/vite"
 import compression from 'vite-plugin-compression'
+import fs from 'fs'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -46,6 +47,10 @@ export default defineConfig({
 
   // 需修改代理
   server: {
+    // https: {
+    //   key: fs.readFileSync("certificates/localhost-key.pem"),
+    //   cert: fs.readFileSync("certificates/localhost.pem")
+    // },
     proxy: {
       '/qqmap': {
         target: 'https://apis.map.qq.com',

@@ -1,6 +1,9 @@
 <template>
   <!--  首页 -->
   <section>
+    <!--  加载背景  -->
+    <Loading title=".section1-title" subtitle=".section1-subtitle"></Loading>
+    <!--  正文  -->
     <div class="container section1">
       <!--   背景图   -->
       <img src="@/assets/test/Quiz-test.jpg" alt="探知问学" loading="lazy" class="background-photo"/>
@@ -11,6 +14,49 @@
       <div class="section1-subtitle">
         在这片智慧的天地里，每一道问题都是通往大自然奥秘的钥匙。通过测试与解析，你将踏上心灵之旅，深挖地理的千丝万缕，揭开知识的面纱。
       </div>
+      <!--  引导图片  -->
+      <ScrollButton sectionName="#section2"></ScrollButton>
+    </div>
+  </section>
+  <!--  测试 + 解析 -->
+  <section>
+    <div class="container section2" id="section2">
+      <el-col :span="6" class="menu-column">
+        <h2>试题分类</h2>
+        <el-menu
+            :unique-opened="true"
+        >
+          <el-sub-menu index="1">
+            <template #title>
+              <el-icon><Calendar /></el-icon>
+              <span>年份</span>
+            </template>
+            <el-menu-item index="1-1">2024</el-menu-item>
+            <el-menu-item index="1-2">2023</el-menu-item>
+            <el-menu-item index="1-3">2022</el-menu-item>
+            <el-menu-item index="1-4">2021</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="2">
+            <template #title>
+              <el-icon><Aim /></el-icon>
+              <span>难易程度</span>
+            </template>
+            <el-menu-item index="2-1">困难</el-menu-item>
+            <el-menu-item index="2-2">中等</el-menu-item>
+            <el-menu-item index="2-3">简单</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="3">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>来源</span>
+            </template>
+            <el-menu-item index="3-1">新课标 I 卷</el-menu-item>
+            <el-menu-item index="3-2">新课标 II 卷</el-menu-item>
+            <el-menu-item index="3-3">全国甲卷</el-menu-item>
+            <el-menu-item index="3-4">自主命题</el-menu-item>
+          </el-sub-menu>
+        </el-menu>
+      </el-col>
       <!--   排行榜   -->
       <div class="leaderboard">
         <h3 class="leaderboard-title">🏆 排行榜</h3>
@@ -22,18 +68,6 @@
           <li class="leaderboard-item">孙七 - 85分</li>
         </ul>
       </div>
-      <!--  引导图片  -->
-      <div class="continue-div">
-        <el-button class="continue-button" @click="scrollToSection2">
-          <img src="@/assets/continue.svg" alt="继续" loading="lazy" class="continue-photo"/>
-        </el-button>
-      </div>
-    </div>
-  </section>
-  <!--  测试 + 解析 -->
-  <section>
-    <div class="container section2" id="section2">
-      <div style="position:absolute;top: 20%;left: 20%;font-size: 32px;font-weight: bold;color: #0d0f1a;width: 500px;">此处展示测试内容</div>
     </div>
   </section>
 </template>
@@ -41,16 +75,18 @@
 <script setup>
 import { onMounted } from "vue";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { gsap } from "gsap";
-gsap.registerPlugin(ScrollTrigger,ScrollToPlugin);
+gsap.registerPlugin(ScrollTrigger);
 
-const scrollToSection2 = () => {
-  gsap.to(window,{
-    scrollTo:"#section2",
-    duration:0.8,
-  })
-};
+// 打开菜单
+const handleOpen = async () => {
+
+}
+
+// 关闭菜单
+const handleClose = async () => {
+
+}
 
 onMounted(() => {
   // 第一屏
@@ -65,11 +101,6 @@ onMounted(() => {
           gsap.timeline()
               .from('.section2',{opacity:0})
     });
-
-    // 引导动画
-    gsap.timeline({repeat:-1})
-        .from('.continue-photo',{y:'-=30',opacity:0,duration:0.9,ease:'none'})
-        .to('.continue-photo',{y:'+=30',opacity:0,duration:0.9,ease:'none'})
   })();
 
   // 视差滚动
@@ -85,8 +116,6 @@ onMounted(() => {
           }
         }
     );
-
-
 });
 </script>
 
@@ -152,11 +181,92 @@ onMounted(() => {
   background-repeat: no-repeat;
 }
 
+/* 第二屏 */
+.section2 {
+  position: absolute;
+  top: 100vh;
+  left: 0;
+  height: 100vh;
+}
+
+/* 整个菜单栏外框 */
+.menu-column {
+  position: absolute;
+  top: 8%;
+  left: 0;
+  height: 90%;
+  width: 250px;
+  background: var(--bg-color); /* 适配你的主题色 */
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 轻微阴影，增加立体感 */
+  transition: all 0.3s ease-in-out;
+}
+
+/* 试题分类标题 */
+.menu-column h2 {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-color);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* 侧边栏菜单 */
+.el-menu {
+  background: transparent !important; /* 让菜单栏背景透明 */
+  border: none;
+}
+
+/* 每个子菜单（如年份 / 难度 / 来源） */
+.el-sub-menu__title {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-color);
+  padding: 12px;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 子菜单悬停效果 */
+.el-sub-menu__title:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-radius: 8px;
+}
+
+/* 菜单项 */
+.el-menu-item {
+  font-size: 14px;
+  color: var(--text-color);
+  padding: 10px 16px;
+  transition: all 0.3s ease-in-out;
+}
+
+/* 子菜单项悬停 */
+.el-menu-item:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px;
+}
+
+/* 选中状态 */
+.el-menu-item.is-active {
+  background: #40a2f6 !important; /* 适配你的主题色 */
+  color: white !important;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+/* 图标 */
+.el-icon {
+  color: #0d0f1a;
+  margin-right: 6px;
+}
+
+
 /* 排行榜 */
 .leaderboard {
   position: absolute;
   top: 20%;
-  right: 2%;
+  right: 20%;
   width: 300px;
   padding: 20px;
   background: rgba(0, 0, 0, 0.3); /* 半透明黑板质感 */
@@ -203,35 +313,4 @@ onMounted(() => {
   color: #cd7f32;
 }
 
-/* 引导背景 */
-.continue-div {
-  position: absolute;
-  bottom: 5%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 100%;
-  background-color: #fffdf3;
-  z-index: 3;
-}
-
-/* 引导按钮 */
-.continue-button {
-  width: 100%;
-  height: 100%;
-  background-color: transparent;
-  border: none;
-  border-radius: 100%;
-}
-
-/* 第二屏 */
-.section2 {
-  position: absolute;
-  top: 100vh;
-  left: 0;
-  height: 100vh;
-}
 </style>

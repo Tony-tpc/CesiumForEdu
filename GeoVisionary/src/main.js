@@ -21,11 +21,24 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 // 全局检查 localStorage，保持用户登录状态
 if (localStorage.getItem("user")) {
     userState.user = JSON.parse(localStorage.getItem("user"));
-    userState.token = localStorage.getItem("token");
+    userState.access_token = localStorage.getItem("access_token");
+    userState.refresh_token = localStorage.getItem("refresh_token");
 }
 
 const ChatContent = defineAsyncComponent(() => {
     import('./components/ChatContent.vue')
+})
+
+const ScrollButton = defineAsyncComponent(() => {
+    import('./components/ScrollButton.vue')
+})
+
+const Loading = defineAsyncComponent(() => {
+    import('./components/Loading.vue')
+})
+
+const BilibiliVideos = defineAsyncComponent(() => {
+    import('./components/BilibiliVideos.vue')
 })
 
 app.component('ChatContent', ChatContent)
