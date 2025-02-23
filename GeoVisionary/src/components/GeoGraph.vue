@@ -147,7 +147,7 @@ const chatWithLocalLLM = async () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "deepseek-r1-distill-qwen-14b", // phi-4 deepseek-r1-distill-llama-8b deepseek-r1-distill-qwen-14b
+          model: "deepseek-r1-distill-llama-8b", // phi-4 deepseek-r1-distill-llama-8b deepseek-r1-distill-qwen-14b
           messages: chatHistory.value,
           temperature: 0.6,
           max_tokens: 8192,
@@ -196,6 +196,15 @@ const chatWithLocalLLM = async () => {
     } finally {
       isGenerating.value = false; // 结束生成状态
       showCursor.value = false; // 隐藏光标
+      setTimeout(() => {
+        const submitBtn = document.querySelector('.submit-btn');
+        if (!submitBtn) {
+          console.warn("按钮不存在，无法设置样式");
+          return;
+        }
+        submitBtn.style.display = "block";
+        submitBtn.style.opacity = "1";
+      }, 40);  // 让浏览器有时间渲染 `.submit-btn`
     }
   }
 };
