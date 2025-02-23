@@ -29,6 +29,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'users.apps.UsersConfig',
+    'proxy.apps.ProxyConfig',
+    'neo4jDB.apps.Neo4JdbConfig'
 ]
 
 MIDDLEWARE = [
@@ -95,6 +97,7 @@ DATABASES = {
     }
 }
 
+NEOMODEL_NEO4J_BOLT_URL = "bolt://neo4j:123456789@localhost:7687"
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
