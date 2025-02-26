@@ -5,7 +5,7 @@
       <video src="@/assets/climate.mp4" loop autoplay muted loading="lazy" class="video1"></video>
     </div>
     <div class="section1-title">
-      气候
+      星系
     </div>
     <div class="section1-subtitle">
       是风雨、寒暑交织成的长卷，塑造了大地与生灵的命运共舞。

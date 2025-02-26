@@ -78,16 +78,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { gsap } from "gsap";
 gsap.registerPlugin(ScrollTrigger);
 
-// 打开菜单
-const handleOpen = async () => {
-
-}
-
-// 关闭菜单
-const handleClose = async () => {
-
-}
-
 onMounted(() => {
   // 第一屏
   (function () {

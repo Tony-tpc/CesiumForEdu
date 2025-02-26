@@ -306,22 +306,19 @@ onMounted(() => {
   (function () {
     // 保存当前滚动位置
     saveScrollPosition = () => {
-      sessionStorage.setItem('scrollPosition', window.scrollY);
+      localStorage.setItem('scrollPosition', window.scrollY);
     };
 
-    // 恢复滚动位置
-    const restoreScrollPosition = () => {
-      const savedScrollY = sessionStorage.getItem('scrollPosition');
-      data.isLoading = !(savedScrollY !== null && savedScrollY !== '0');
-    };
-    restoreScrollPosition();
     window.addEventListener('beforeunload', saveScrollPosition);
+
+    const isLoading = inject('isLoading');
+    data.isLoading = localStorage.getItem('scrollPosition') === '0';
+    isLoading.value = data.isLoading;
+    console.log(`isLoading: ${isLoading.value}`);
 
     if (data.isLoading) {
       drawDashedGrid();
       disableScroll(); // 禁用滚动
-      const isLoading = inject('isLoading');
-      isLoading.value = data.isLoading;
 
       gsap.context(() => {
         const t = gsap.timeline()
@@ -423,6 +420,15 @@ onMounted(() => {
           duration: 0.6,
         })
       });
+    } else {
+      // 大标题浮动
+      gsap.to('.section1-title',{
+        y: '+=5',
+        repeat: -1,
+        duration: 1.5,
+        yoyo: true,
+        ease: "none"
+      })
     }
   })();
 

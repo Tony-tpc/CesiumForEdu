@@ -1,6 +1,5 @@
 <script setup>
 import { onMounted, ref } from "vue";
-import {disableScroll, enableScroll} from "@/store/usefulFunction.js";
 import { gsap } from "gsap";
 
 let saveScrollPosition;
@@ -19,18 +18,9 @@ const props = defineProps({
 const isLoading = ref(true);
 
 onMounted(() => {
-  // 保存当前滚动位置
-  saveScrollPosition = () => {
-    localStorage.setItem('scrollPosition', window.scrollY);
-  };
-  window.addEventListener('beforeunload', saveScrollPosition);
-
   // 加载动画
-  if(localStorage.getItem('scrollPosition') === '0'){
+  if(isLoading.value) {
     (async function () {
-      // 禁用滚动
-      disableScroll()
-
       // 粒子背景消逝，主页出现
       particlesJS("particles-background", {
         particles: {
@@ -51,7 +41,6 @@ onMounted(() => {
       t.to('.loading-logo',{left:105,top:45,duration:1.1,width:50},0.7)
       // 重启滚动
       await t.set('.loading-logo',{display:'none',delay:0.4})
-      enableScroll();
       isLoading.value = false;
     })();
   } else {
@@ -71,7 +60,7 @@ onMounted(() => {
 <style scoped>
 /* 加载动画背景 */
 .loading-background {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -82,7 +71,7 @@ onMounted(() => {
 
 /* 加载背景logo */
 .loading-logo {
-  position: absolute;
+  position: fixed;
   top: 50%;
   left: 50%;
   width: 13%;

@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, ref } from "vue";
+import {reactive, onMounted, ref} from "vue";
 import ph1 from '@/assets/test/Rec-test-1.jpeg';
 import ph2 from '@/assets/test/Rec-test-2.jpeg';
 import ph3 from '@/assets/test/Rec-test-3.jpeg';

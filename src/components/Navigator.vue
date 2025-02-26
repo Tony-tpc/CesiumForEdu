@@ -45,7 +45,7 @@
                   <el-menu-item index="/navigator/climate"
                                 :class="[{ 'active-item-3': data.activeIndex === '/navigator/climate' }]"
                   >
-                    <span class="menu-fonts" :style="{ color: data.activeIndex === '/navigator/climate' ? '#fffdf3' : '#0d534b' }">气候</span>
+                    <span class="menu-fonts" :style="{ color: data.activeIndex === '/navigator/climate' ? '#fffdf3' : '#0d534b' }">星系</span>
                   </el-menu-item>
                   <el-menu-item index="/navigator/world-map"
                                 :class="[{ 'active-item-4': data.activeIndex === '/navigator/world-map' }]"
@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { reactive, onMounted, provide, ref, watch, nextTick } from "vue";
+import { reactive, onMounted, provide, ref, watch, nextTick, onBeforeUnmount } from "vue";
 import { User } from "@element-plus/icons-vue";
 import router from "@/router/index.js";
 import { useRoute } from "vue-router";
@@ -130,6 +130,7 @@ const route = useRoute();
 // Home第三屏切换主题色
 const TopChangeMode = ref(6200);
 const isLoading = ref(false);
+const showAnimation = ref(false);
 provide('TopChangeMode',TopChangeMode);
 provide('isLoading',isLoading);
 
@@ -164,12 +165,6 @@ const handleSelect = (index) => {
   data.activeIndex = index;
 };
 
-// 保存选中的路由
-const savedIndex = localStorage.getItem('activeIndex');
-if (savedIndex) {
-  data.activeIndex = savedIndex;
-}
-
 // 退出登录
 const handleLogout = () => {
   clearUser();  // 清除用户信息
@@ -178,36 +173,56 @@ const handleLogout = () => {
 };
 
 // 配合加载动画
-const loadAnimation = (path) => {
-  const scrollY = localStorage.getItem('scrollPosition');
-  if (scrollY === '0') {
-    if (isLoading.value || path === '/navigator/smart-recs' || path === '/navigator/insight-lab' || path === '/navigator/geo-graph') {
-      const nav = document.querySelector('.navigator');
+const loadAnimation = () => {
+  const nav = document.querySelector('.navigator');
 
-      // 强制触发 reflow，确保动画重新执行
-      nav.style.opacity = '0';
-      void nav.offsetHeight;
-      if (isLoading.value) {
-        gsap.timeline()
-            .set('.navigator',{pointerEvents:'none'})
-            .to('.navigator',{opacity:1,duration:1.5,delay:2.6})
-            .set('.navigator',{pointerEvents: 'auto'})
-      } else {
-        gsap.timeline()
-            .set('.navigator',{pointerEvents:'none'})
-            .to('.navigator',{opacity:1,duration:1.5,delay:2})
-            .set('.navigator',{pointerEvents: 'auto'})
-      }
-    } else
-      document.querySelector('.navigator').style.opacity = 1;
-  } else
-    document.querySelector('.navigator').style.opacity = 1;
+  // 强制触发 reflow，确保动画重新执行
+  nav.style.opacity = '0';
+  void nav.offsetHeight;
+  if (isLoading.value) {
+    gsap.timeline()
+        .set('.navigator',{pointerEvents:'none'})
+        .to('.navigator',{opacity:1,duration:1.5,delay:2.6})
+        .set('.navigator',{pointerEvents: 'auto'})
+  } else {
+    gsap.timeline()
+        .set('.navigator',{pointerEvents:'none'})
+        .to('.navigator',{opacity:1,duration:1.5,delay:2})
+        .set('.navigator',{pointerEvents: 'auto'})
+  }
 }
 
+// 检测是否播放动画
+const checkAnimationCondition = async (path) => {
+  const scrollTop = localStorage.getItem('scrollPosition');
+  const needLoading = path === '/navigator/smart-recs' || path === '/navigator/insight-lab' || path === '/navigator/geo-graph'
+  console.log(`scrollTop = ${scrollTop}`);
+  if (scrollTop === '0' || needLoading) {
+    showAnimation.value = true;
+    loadAnimation()
+    showAnimation.value = false;
+  } else {
+    showAnimation.value = false;
+    document.querySelector('.navigator').style.opacity = 1;
+  }
+};
+
 onMounted(() => {
+  window.addEventListener('popstate', function(event) {
+    console.log('历史记录更改:', event.state);
+    data.activeIndex = event.state.current;
+    if (event.state.scroll.top === 0) {
+      showAnimation.value = true;
+      checkAnimationCondition(data.activeIndex);
+    } else {
+      showAnimation.value = false;
+    }
+  });
+
+  // 自动登录
   autoLogin();
-  updateTheme();
   // 自动调节主题色
+  updateTheme();
   window.addEventListener('scroll',updateTheme);
   // 获取左右间距
   const getMargin = () => {
@@ -216,15 +231,20 @@ onMounted(() => {
   getMargin();
   // 响应式调节导航栏
   window.addEventListener('resize',getMargin);
-  loadAnimation(route.path);
+  console.log(`router.currentRoute.value.path = ${router.currentRoute.value.path}`);
+  checkAnimationCondition(router.currentRoute.value.path);
 })
 
 // 路由一发生变化就更新主题
 watch(route,() => {
   updateTheme();
   nextTick(() => {
-    loadAnimation(route.path);
+    loadAnimation();
   })
+});
+
+onBeforeUnmount(() => {
+  localStorage.setItem("scrollPosition", window.scrollY);
 });
 </script>
 

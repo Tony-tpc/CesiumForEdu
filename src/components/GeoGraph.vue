@@ -1,7 +1,7 @@
 <template>
   <section>
     <!--  加载背景  -->
-    <Loading title=".section1-title" subtitle=".section1-subtitle"></Loading>
+    <Loading title=".section1-title" subtitle=".section1-subtitle" :needLoading="showAnimation"></Loading>
   </section>
   <section>
     <div>
@@ -50,7 +50,7 @@
   <!--  图谱展示页  -->
   <section>
     <div class="container section2" id="section2">
-      <div style="position:absolute;top: 20%;left: 20%;font-size: 32px;font-weight: bold;color: #0d0f1a;width: 500px;">此处展示知识图谱</div>
+      <div ref="graphContainer" style="position:absolute;width: 100%; height: 90%;top: 10%;left: 0;"></div>
     </div>
   </section>
 </template>
@@ -58,12 +58,18 @@
 <script setup>
 import * as PIXI from 'pixi.js';
 import { Live2DModel } from 'pixi-live2d-display/cubism4';
-import { ref, onMounted, onUnmounted, reactive } from 'vue';
+import {ref, onMounted, onUnmounted, reactive, inject, onBeforeUnmount} from 'vue';
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import neo4j from 'neo4j-driver';
+import { Network } from 'vis-network';
+import router from "@/router/index.js";
 gsap.registerPlugin(ScrollTrigger);
 
 window.PIXI = PIXI;
+// 绑定图谱容器
+const graphContainer = ref(null);
+const showAnimation = inject("showAnimation");
 
 const data = reactive({
   textInput:"",
@@ -106,13 +112,16 @@ const loadLive2D = async () => {
 
     // 加载 Live2D 模型
     // "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json"
+    // "/haru/haru_greeter_t03.model3.json"
     // "/maolili/mailili.model3.json"
-    model.value = await Live2DModel.from("https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json");
+    // "/ariu/ariu.model3.json"
+    // "/IceGIrl Live2D/IceGirl.model3.json"
+    model.value = await Live2DModel.from("/haru/haru_greeter_t03.model3.json");
     app.value.stage.addChild(model.value);
 
     // 调整模型大小
     model.value.scale.set(0.2);
-    model.value.x = -120;
+    model.value.x = -60;
 
     console.log("Live2D 模型加载成功");
   } catch (error) {
@@ -289,6 +298,7 @@ const changeDisplay = () => {
 
 onMounted(() => {
   window.addEventListener('resize', updatePosition);
+
   // 页面轮播图动画
   gsap.timeline({repeat:-1})
       .to('.image1',{opacity:1,scale:1,duration:3,ease:'none'})
@@ -309,8 +319,78 @@ onMounted(() => {
         gsap.timeline()
             .to('.section1',{y:'-=100',opacity:0})
             .from('.section2',{y:'+=100',opacity:0},"<")
-  })
+  });
+
+  // 加载知识图谱
+  (async function (){
+    // 连接 Neo4j 数据库
+    const driver = neo4j.driver(
+        "bolt://localhost:7687",
+        neo4j.auth.basic("neo4j", "123456789")
+    );
+    const session = driver.session();
+
+    const topic_name = '地球和地图';
+    const neo4jUrl = 'http://localhost:8040/neo4jDB/get-graph/';
+    const response = await fetch(neo4jUrl,{
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        topic_name: topic_name,
+      })
+    })
+
+    if (!response.ok) {
+      console.log('请求出错' + response.status);
+    }
+    const data = await response.json();
+    console.log(data)
+
+    // 查询数据库获取节点和关系
+    const result = await session.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 25");
+    await session.close();
+    await driver.close();
+
+    const nodes = new Map();
+    const edges = [];
+
+    result.records.forEach(record => {
+      const n = record.get("n");
+      const m = record.get("m");
+      const r = record.get("r");
+
+      nodes.set(n.identity.toString(), { id: n.identity.toString(), label: n.properties.name || "未知节点" });
+      nodes.set(m.identity.toString(), { id: m.identity.toString(), label: m.properties.name || "未知节点" });
+
+      edges.push({ from: n.identity.toString(), to: m.identity.toString(), label: r.type });
+    });
+
+    // 渲染知识图谱
+    const network = new Network(graphContainer.value, {
+      nodes: Array.from(nodes.values()),
+      edges
+    }, {
+      nodes: { shape: "dot", size: 15 },
+      edges: { arrows: "to" },
+      physics: { stabilization: false }
+    });
+
+    // 交互：点击节点
+    network.on("click", function (params) {
+      if (params.nodes.length > 0) {
+        alert(`你点击了节点 ${params.nodes[0]}`);
+      }
+    });
+  })();
 });
+
+onBeforeUnmount(() => {
+  localStorage.setItem('scrollPosition',window.scrollY);
+  localStorage.setItem('route',router.currentRoute.value.path);
+  console.log(`current route: ${router.currentRoute.value.path},scrollPosition: ${window.scrollY}`);
+})
 
 // 组件卸载时销毁 WebGL 资源，停止对话
 onUnmounted(() => {
