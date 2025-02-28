@@ -97,7 +97,7 @@ const showContextMenu = (event) => {
     // 点击其他地方关闭菜单
     setTimeout(() => {
         document.addEventListener('click', closeContextMenu, { once: true });
-    }, 0); 
+    }, 0);
 
 };
 
@@ -191,11 +191,9 @@ const handleMapClick = async (cartesian) => {
     const lng = (normalizeCoordinate(cartesian.lng, 180)).toFixed(5);
     console.log(lat, lng);
 
-    const region = await reverseGeocoding(lat, lng);
-    console.log(region);
-
     // 询问 AI
-    askAI(lng, lat, region);
+    chatRef.value.sendMessage(lat, lng);
+
 }
 
 
@@ -223,48 +221,6 @@ const reverseGeocoding = async (lat, lng) => {
     return region;
 }
 
-const askAI = async (latitude, longitude, region) => {
-    var head = ""
-    if (region != "") {
-        head =
-            `
-现在，请告诉我${region}的地理信息和人文特点：
-纬度 ${latitude}，经度 ${longitude}
-`
-    }
-    else head =
-        `
-现在，请告诉我以下位置的地理信息和人文特点：
-纬度 ${latitude}，经度 ${longitude}
-`
-
-    const prompt = `
-请按照以下格式回答：
-
-1. **地理位置**：
-   - 经纬度：{纬度}, {经度}
-   - 所属国家/地区：{国家/地区}
-   - 所属省份/州：{省份/州}
-   - 所属城市：{城市}
-
-2. **地理信息**：
-   - 地形：{地形类型}
-   - 气候：{气候类型}
-   - 自然资源：{自然资源}
-
-3. **人文特点**：
-   - 人口：{人口数量}
-   - 语言：{主要语言}
-   - 文化特色：{文化特色}
-   - 著名景点：{著名景点}
-
-4. **其他信息**：
-   - 历史背景：{历史背景}
-   - 经济发展：{经济发展}
-`
-    // 解析 AI 返回的经纬度并标记
-    chatRef.value.handleAIResponse(head + prompt);
-};
 
 // 监听拖动事件
 const handleDrag = () => {
@@ -336,5 +292,15 @@ const closeContextMenu = () => {
     background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
     color: #409eff;
     transform: translateX(4px);
+}
+
+
+:root {
+    --primary: #191C44;
+    --secondary: #1A1D79;
+    --tertiary: #0587cc;
+    --text: #F3F3F3;
+    --dark: #05051A;
+    --radius: 18px;
 }
 </style>

@@ -13,7 +13,7 @@ const sendMessage = async () => {
   messages.push({ role: 'user', content: inputText.value })
   
   try {
-    const response = await fetch('http://localhost:8000/api/chat', {
+    const response = await fetch('http://localhost:8040/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

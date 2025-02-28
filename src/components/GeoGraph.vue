@@ -9,7 +9,7 @@
       <canvas ref="canvas" class="live2Dmodel" @click="changeDisplay"></canvas>
       <div class="LLM-input-output">
         <el-alert title="请注意，输入不能为空" type="error" center show-icon class="warning-alert" :closable="false"/>
-        <div>
+        <div ref="input-container">
           <el-input
               v-model="data.textInput"
               :rows="2"
@@ -19,7 +19,10 @@
               placeholder="您可以在这里输入您想和小助教对话的内容！"
               class="inputArea"
               @keydown="handleKeydown"
+              id="textInputArea"
+              @input="handleInput"
           />
+          <InputBox v-for="item in inputBoxes" :input="item.input"/>
           <el-button v-if="!isGenerating" type="primary" @click="handleChatWithLocalLLM" class="submit-btn" :disabled="data.isDisabled">
             <el-icon  ><Top /></el-icon>
           </el-button>
@@ -50,7 +53,11 @@
   <!--  图谱展示页  -->
   <section>
     <div class="container section2" id="section2">
-      <div ref="graphContainer" style="position:absolute;width: 100%; height: 90%;top: 10%;left: 0;"></div>
+      <div class="switch-words">便捷模式</div>
+      <div class="switch-mode-container wrapper"><SwitchButton v-model="isActive"/></div>
+      <div id="graph-container" style="width: 100%; height: 90%; border: 1px solid #ddd;position: absolute;top: 10%;"></div>
+      <div style="position: fixed;bottom: 10%;left: 40%;background-color: #0d0f1a;width: 100px;height: 100px;" id="test">
+      </div>
     </div>
   </section>
 </template>
@@ -58,17 +65,19 @@
 <script setup>
 import * as PIXI from 'pixi.js';
 import { Live2DModel } from 'pixi-live2d-display/cubism4';
-import {ref, onMounted, onUnmounted, reactive, inject, onBeforeUnmount} from 'vue';
+import {ref, onMounted, onUnmounted, reactive, inject, onBeforeUnmount, computed} from 'vue';
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import neo4j from 'neo4j-driver';
 import { Network } from 'vis-network';
 import router from "@/router/index.js";
+import {throttle} from "lodash";
+import InputBox from "@/components/InputBox.vue";
+import SwitchButton from "@/components/SwitchButton.vue";
 gsap.registerPlugin(ScrollTrigger);
 
 window.PIXI = PIXI;
 // 绑定图谱容器
-const graphContainer = ref(null);
 const showAnimation = inject("showAnimation");
 
 const data = reactive({
@@ -76,6 +85,7 @@ const data = reactive({
   changeArea:false,
   displayEverything:false,
   isDisabled:false,
+  nodeInfo:[],
 })
 
 const canvas = ref(null);
@@ -84,8 +94,12 @@ const model = ref(null);
 const content = ref('');
 const showCursor = ref(false);
 const isGenerating = ref(false); // 控制加载状态
+const inputContainer = ref(null);
+const inputBoxes = ref([]);
+const isActive = ref(true);
 let controller = new AbortController();  // 用于控制请求
 let reader = null;  // 读取流
+let lastHeight = 0; // 记录上一次高度
 
 // 封装 Live2D 加载逻辑
 const loadLive2D = async () => {
@@ -296,7 +310,33 @@ const changeDisplay = () => {
   }
 }
 
+// 动态获取输入文本框的 top 值
+const getInputAreaTop = () => {
+  const inputElement = document.querySelector('#textInputArea');
+  const testElement = document.querySelector('#test');
+  if (inputElement && testElement) {
+    const inputTop = inputElement.getBoundingClientRect().top;
+    testElement.style.top = `${inputTop - 120}px`;
+  }
+}
+
+// 监听输入事件
+const handleInput = () => {
+  nextTick(() => {
+    const inputElement = document.querySelector('#textInputArea');
+    if (inputElement) {
+      // 检测实际高度是否变化
+      const currentHeight = inputElement.getBoundingClientRect().top;
+      if (currentHeight !== lastHeight) {
+        lastHeight = currentHeight;
+        getInputAreaTop(); // 高度变化时更新位置
+      }
+    }
+  });
+};
+
 onMounted(() => {
+  // 加载监听器
   window.addEventListener('resize', updatePosition);
 
   // 页面轮播图动画
@@ -321,69 +361,147 @@ onMounted(() => {
             .from('.section2',{y:'+=100',opacity:0},"<")
   });
 
-  // 加载知识图谱
-  (async function (){
-    // 连接 Neo4j 数据库
+  async function renderKnowledgeGraph() {
     const driver = neo4j.driver(
         "bolt://localhost:7687",
         neo4j.auth.basic("neo4j", "123456789")
     );
     const session = driver.session();
 
-    const topic_name = '地球和地图';
-    const neo4jUrl = 'http://localhost:8040/neo4jDB/get-graph/';
-    const response = await fetch(neo4jUrl,{
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        topic_name: topic_name,
-      })
-    })
+    try {
+      // 查询路径数据
+      const result = await session.run(`
+      MATCH path=(n)-[r]->(m)
+      RETURN path
+      LIMIT 25`);
 
-    if (!response.ok) {
-      console.log('请求出错' + response.status);
+      const nodes = new Map();
+      const edges = new Map();
+
+      result.records.forEach(record => {
+        const path = record.get('path');
+
+        path.segments.forEach(segment => {
+          // 处理起始节点
+          const startNode = segment.start;
+          nodes.set(startNode.identity.toString(), {
+            id: startNode.identity.toString(),
+            label: startNode.properties.name || startNode.properties.名称 || "未命名节点",
+            properties: startNode.properties,
+            labels: startNode.labels
+          });
+
+          // 处理关系
+          const relationship = segment.relationship;
+          edges.set(relationship.identity.toString(), {
+            id: relationship.identity.toString(),
+            from: startNode.identity.toString(),
+            to: segment.end.identity.toString(),
+            label: relationship.type,
+            properties: relationship.properties
+          });
+
+          // 处理结束节点
+          const endNode = segment.end;
+          nodes.set(endNode.identity.toString(), {
+            id: endNode.identity.toString(),
+            label: endNode.properties.name || endNode.properties.名称 || "未命名节点",
+            properties: endNode.properties,
+            labels: endNode.labels
+          });
+        });
+      });
+
+      // 转换可视化数据格式
+      const networkData = {
+        nodes: Array.from(nodes.values()).map(node => ({
+          id: node.id,
+          label: node.label,
+          title: `
+          Labels: ${node.labels.join(', ')}
+          Properties: ${JSON.stringify(node.properties, null, 2)}
+        `,
+          color: getColorByLabel(node.labels[0]),
+          font: { color: '#fff' }
+        })),
+        edges: Array.from(edges.values()).map(edge => ({
+          id: edge.id,
+          from: edge.from,
+          to: edge.to,
+          label: edge.label,
+          arrows: 'to',
+          title: `Type: ${edge.label}\nProperties: ${JSON.stringify(edge.properties)}`
+        }))
+      };
+
+      // 可视化配置
+      const options = {
+        nodes: {
+          shape: 'box',
+          margin: 10,
+          size: 30,
+          font: {
+            size: 14,
+            face: 'Microsoft YaHei'
+          }
+        },
+        edges: {
+          width: 2,
+          smooth: {
+            type: 'cubicBezier'
+          }
+        },
+        physics: {
+          stabilization: true,
+          barnesHut: {
+            gravitationalConstant: -2000
+          }
+        },
+        interaction: {
+          hover: true
+        }
+      };
+
+      // 渲染图谱
+      const container = document.getElementById('graph-container');
+      const network = new Network(container, networkData, options);
+
+      // 点击节点显示名称
+      network.on("click", function (params) {
+        if (params.nodes.length > 0 && isActive.value) {
+          const nodeId = params.nodes[0];
+          const node = nodes.get(nodeId);
+          gsap.set(['.outputArea','.inputArea','.submit-btn'],{display:'block'});
+          gsap.to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'});
+          data.displayEverything = true;
+          data.textInput += node.label;
+          inputBoxes.value.push({'input':node.label});
+          getInputAreaTop();
+        }
+      });
+
+    } catch (error) {
+      console.error('Neo4j查询错误:', error);
+    } finally {
+      await session.close();
+      await driver.close();
     }
-    const data = await response.json();
-    console.log(data)
+  }
 
-    // 查询数据库获取节点和关系
-    const result = await session.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 25");
-    await session.close();
-    await driver.close();
+// 标签颜色映射函数
+  function getColorByLabel(label) {
+    const colorMap = {
+      Topic: '#FF6B6B',
+      FirstLevelBranch: '#4ECDC4',
+      SecondLevelBranch: '#45B7D1',
+      ThirdLevelBranch: '#96CEB4',
+      FourthLevelBranch: '#FFEEAD'
+    };
+    return colorMap[label] || '#C0C0C0';
+  }
 
-    const nodes = new Map();
-    const edges = [];
-
-    result.records.forEach(record => {
-      const n = record.get("n");
-      const m = record.get("m");
-      const r = record.get("r");
-
-      nodes.set(n.identity.toString(), { id: n.identity.toString(), label: n.properties.name || "未知节点" });
-      nodes.set(m.identity.toString(), { id: m.identity.toString(), label: m.properties.name || "未知节点" });
-
-      edges.push({ from: n.identity.toString(), to: m.identity.toString(), label: r.type });
-    });
-
-    // 渲染知识图谱
-    const network = new Network(graphContainer.value, {
-      nodes: Array.from(nodes.values()),
-      edges
-    }, {
-      nodes: { shape: "dot", size: 15 },
-      edges: { arrows: "to" },
-      physics: { stabilization: false }
-    });
-
-    // 交互：点击节点
-    network.on("click", function (params) {
-      if (params.nodes.length > 0) {
-        alert(`你点击了节点 ${params.nodes[0]}`);
-      }
-    });
-  })();
+// 执行渲染
+  renderKnowledgeGraph();
 });
 
 onBeforeUnmount(() => {
@@ -553,7 +671,6 @@ canvas {
   z-index: 10;
 }
 
-
 /* 第二屏 */
 .section2 {
   position: absolute;
@@ -561,4 +678,27 @@ canvas {
   left: 0;
   height: 100vh;
 }
+
+/* 切换模式按钮 */
+.switch-mode-container {
+  position: absolute;
+  top: 15%;
+  right: -2%;
+  z-index: 2;
+}
+.wrapper {
+  transform: scale(0.5);
+  transform-origin: 0 0;
+}
+.switch-words {
+  position: absolute;
+  top: 11%;
+  right: 4.6%;
+  z-index: 3;
+  font-weight: 600;
+  font-size: 18px;
+  color: #333333;
+  letter-spacing: 1px;
+}
+
 </style>

@@ -56,6 +56,11 @@
       </table>
     </div>
   </div>
+  <div class="container">
+    <InputBox input="333333"></InputBox>
+    <InputBox input="444444"></InputBox>
+  </div>
+
 <!--  <div class="container">-->
 <!--    <BilibiliVideos :videos="data.videos"></BilibiliVideos>-->
 <!--  </div>-->
@@ -107,6 +112,7 @@
 
 <script setup>
 import {onBeforeUnmount, onMounted, reactive, ref, onUpdated} from "vue";
+import InputBox from "@/components/InputBox.vue";
 // import { marked } from "marked";
 // import  DOMPurify from "dompurify";
 // import {userState} from "@/store/userStore.js"

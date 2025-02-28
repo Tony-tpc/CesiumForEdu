@@ -1,33 +1,91 @@
 <template>
   <div class="chat-container">
     <!-- 历史记录侧边栏 -->
-    <div class="history-sidebar" :class="{ 'visible': isHistoryOpen }">
+    <!-- <div class="history-sidebar" :class="{ 'visible': isHistoryOpen }">
       <div class="history-header">
         <h3>历史记录</h3>
         <button @click="toggleHistory">×</button>
       </div>
       <div class="history-list">
-        <!-- 历史记录内容 -->
+        <div v-for="(item, index) in chatHistory" :key="index" 
+             class="history-item" @click="loadHistory(item)">
+          <span>{{ item.timestamp }}</span>
+          <div class="preview">{{ getHistoryPreview(item.messages) }}</div>
+        </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- 主聊天区域 -->
     <div class="chat-main">
       <div class="chat-header">
         <button @click="toggleHistory" class="history-toggle-btn">☰</button>
-        <h2>Chat with AI</h2>
+        <h2>地理知识助手</h2>
       </div>
 
+
+
       <div class="chat-messages" ref="messagesContainer">
-        <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
-          <div v-html="renderMarkdown(msg.content)" class="message-content"></div>
+        <!-- 新增的欢迎介绍 -->
+        <div class="welcome-message" v-if="messages.length === 0">
+          <div class="welcome-card">
+            <DomeIcon class="welcome-content" theme="outline" size="48" fill="#0d534b" :strokeWidth="3" />
+            <p>您好！我是地理通，我可以：</p>
+            <ul>
+              <p>📍 解析地理位置坐标</p>
+              <p>🗺️ 解释地理特征与人文信息</p>
+              <p>📌 提供行政区划详细信息</p>
+              <p>🌦️ 查询地区气候与环境数据</p>
+            </ul>
+            <div class="example-questions">
+              <ul>
+                <p>试试问我：</p>
+                <li @click="handleExampleClick('巴黎的经纬度是多少？')">👉 "巴黎的经纬度是多少？"</li>
+                <li @click="handleExampleClick('长江流经哪些省份？')">👉 "长江流经哪些省份？"</li>
+                <li @click="handleExampleClick('东京的气候特点是什么？')">👉 "东京的气候特点是什么？"</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div v-for="(msg, index) in messages" :key="index"
+          :class="['message', msg.role, { 'streaming': isStreaming && index === messages.length - 1 }]">
+          <div class="message-header">
+            <span v-if="msg.role === 'user'">我</span>
+            <span v-else>AI助手</span>
+          </div>
+          <!-- 思维链区域 -->
+          <!-- 修改后的推理链区域 -->
+          <div class="reasoning-container" v-if="msg.reasoning">
+            <div class="reasoning-header" @click="toggleReasoning(index)">
+              <span class="toggle-icon">{{ msg.isReasoningExpanded ? '−' : '+' }}</span>
+              <span class="toggle-text">推理过程</span>
+            </div>
+            <transition name="slide">
+              <div class="reasoning-content" v-show="msg.isReasoningExpanded" v-html="renderMarkdown(msg.reasoning)">
+              </div>
+            </transition>
+          </div>
+
+          <!-- text -->
+          <div class="message-content" :key="msg.content + updateFlag"
+            v-html="renderMarkdown(msg.displayContent || msg.content)">
+          </div>
+
+
+          <div v-if="isStreaming && index === messages.length - 1" class="typing-indicator">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
         </div>
       </div>
 
       <div class="input-area">
-        <textarea v-model="inputText" @keydown.enter.exact.prevent="sendMessage" placeholder="输入你的消息..." />
-        <button @click="sendMessage" :disabled="isLoading">
-          {{ isLoading ? '发送中...' : '发送' }}
+        <textarea v-model="inputText" @keydown.enter.exact.prevent="() => sendMessage()"
+          placeholder="输入地理位置问题，例如：巴黎的经纬度是多少？..." :disabled="isLoading" />
+        <button @click="() => sendMessage()" :disabled="isLoading">
+          <span v-if="isLoading">发送中...</span>
+          <span v-else>发送</span>
         </button>
       </div>
     </div>
@@ -35,30 +93,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted, nextTick, toRaw } from 'vue'
-import CryptoJS from 'crypto-js'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
+import { Dome as DomeIcon } from "@icon-park/vue-next"
+// 配置后端地址
+const API_URL = 'http://127.0.0.1:8040/api/chat/'
 
-// 配置参数
-const API_KEY = import.meta.env.VITE_API_KEY
-const API_SECRET = import.meta.env.VITE_API_SECRET
-const APPID = import.meta.env.VITE_APP_APPID
-const HOST = 'spark-api.xf-yun.com'
-const PATH = '/v4.0/chat'
-
-// 数据
+// 响应式数据
 const messages = reactive([])
 const inputText = ref('')
 const isLoading = ref(false)
-const props = defineProps(['messages'])
+const isStreaming = ref(false)
 const messagesContainer = ref(null)
-const ws = ref(null)
 const isHistoryOpen = ref(false)
 const chatHistory = ref(JSON.parse(localStorage.getItem('chatHistory')) || [])
 const coordinates = ref([])
-// 初始化 Markdown 渲染器
+const updateFlag = ref(0)
+
+// Markdown 配置
 marked.setOptions({
   highlight: (code, lang) => {
     const language = hljs.getLanguage(lang) ? lang : 'plaintext'
@@ -66,218 +120,254 @@ marked.setOptions({
   },
 })
 
-// 渲染 Markdown
-const renderMarkdown = (content) => {
-  return marked(content)
-}
+// 消息发送逻辑
+const sendMessage = async (latitude = null, longitude = null) => {
+  var head = ""
+  var Requireregion = false
+  var question = ""
+  var Showquestion = ""
 
-// 生成鉴权 URL
-const generateAuthUrl = () => {
-  const date = new Date().toUTCString()
-  const signature_origin = `host: ${HOST}\ndate: ${date}\nGET ${PATH} HTTP/1.1`
-  const signature_sha = CryptoJS.HmacSHA256(signature_origin, API_SECRET)
-  const signature = CryptoJS.enc.Base64.stringify(signature_sha)
-  const authorization_origin = `api_key="${API_KEY}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`
-  const authorization = btoa(authorization_origin)
-  return `wss://${HOST}${PATH}?authorization=${authorization}&date=${date}&host=${HOST}`
-}
-
-// 初始化 WebSocket
-const initWebSocket = () => {
-  const url = generateAuthUrl()
-  ws.value = new WebSocket(url)
-
-  ws.value.onopen = () => {
-    console.log('WebSocket connected')
+  if (latitude && longitude) // 存在经纬度
+  {
+    Requireregion = true
+    question = {
+      "type": "latlng",
+      "lat": latitude,
+      "lng": longitude
+    }
+    Showquestion = `请告诉我纬度${latitude}，经度${longitude}的信息`
   }
-
-  ws.value.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data.header.code !== 0) {
-      console.error('Error:', data.header)
-      return
+  else {
+    question = {
+      "type": "text",
+      "text": inputText.value.trim(),
     }
+    Showquestion = inputText.value.trim()
+  }
+  if (!question || isLoading.value) return
 
-    const text = data.payload.choices.text[0].content
+  try {
+    isLoading.value = true
+    isStreaming.value = true
 
-    const lastMessage = messages[messages.length - 1]
 
-    if (lastMessage.role === 'assistant') {
-      lastMessage.content += text
-    } else {
+    // 添加用户消息
+    messages.push({
+      role: 'user',
+      displayContent: Showquestion, // 显示内容
+      actualContent: question // 实际发送内容
+    });
+    // 创建助理消息占位
+    const assistantMessage = { role: 'assistant', content: '', reasoning: '', isReasoningExpanded: true }
+    messages.push(assistantMessage)
+    scrollToBottom()
 
-      messages.push({ role: 'assistant', content: text })
-    }
-
-    nextTick(() => {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    // 发送请求
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: question,
+        history: messages.slice(-5).map(m => ({
+          role: m.role,
+          content: m.actualContent || m.content
+        }))
+      })
     })
 
-    if (data.header.status === 2) {
-      isLoading.value = false
-      ws.value.close()
-      saveHistory()
-      extractCoordinates(...messages.slice(-1).map(msg => ({ role: msg.role, content: msg.content })));
+    // 处理流式响应
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+    // 性能优化：批量更新
+    let updateQueue = []
+    let lastUpdate = Date.now()
 
+    const flushQueue = () => {
+      if (updateQueue.length > 0) {
+        assistantMessage.content += updateQueue.join('')
+        updateQueue = []
+        updateFlag.value++ // 强制触发更新
+        scrollToBottom()
+      }
     }
-  }
+    var startcontent = false
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        flushQueue()
+        break
+      }
 
-  ws.value.onerror = (error) => {
-    console.error('WebSocket error:', error)
+      buffer += decoder.decode(value, { stream: true })
+      // console.log("????",buffer);
+
+      // 分割处理多行数据
+      while (buffer.includes('\n')) {
+        const newlineIndex = buffer.indexOf('\n')
+        const line = buffer.slice(0, newlineIndex).trim()
+        buffer = buffer.slice(newlineIndex + 1)
+        console.log(buffer);
+
+        if (line) {
+          try {
+            const data = JSON.parse(line)
+            // 更新消息内容
+            if (data.content) {
+              if (!startcontent) {
+                assistantMessage.isReasoningExpanded = false;
+                startcontent = true
+              }
+              assistantMessage.content += data.content
+              updateFlag.value++ // 触发内容更新
+            }
+            if (data.reasoning) {
+              assistantMessage.reasoning += data.reasoning
+              updateFlag.value++ // 触发推理更新
+            }
+            // 处理坐标数据
+            // if (data.coordinates) {
+            //   coordinates.value = data.coordinates.map(c => ({
+            //     lat: parseFloat(c[0]),
+            //     lng: parseFloat(c[1])
+            //   }))
+            // }
+
+            // 实时滚动
+            scrollToBottom()
+            const shouldFlush =
+              Date.now() - lastUpdate > 50 ||
+              updateQueue.length >= 3 ||
+              /[。！？\n]/.test(data.content)
+
+            if (shouldFlush) {
+              flushQueue()
+              lastUpdate = Date.now()
+            }
+          } catch (e) {
+            console.error('JSON 解析错误:', e)
+          }
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('请求失败:', error)
+    messages.push({
+      role: 'system',
+      content: `请求错误: ${error.message}`
+    })
+  } finally {
+    // 仅当是输入框提交时才清空
+    if (!latitude) inputText.value = ''
     isLoading.value = false
+    isStreaming.value = false
+    saveHistory()
+    // extractCoordinates(assistantMessage.content)
   }
 }
 
-// 发送消息
-const sendMessage = async () => {
-  if (!inputText.value.trim() || isLoading.value) return
 
-  isLoading.value = true
-  handleAIResponse(inputText.value)
-  const question = inputText.value
-  inputText.value = ''
-  // extractCoordinates()
+// 添加折叠切换方法
+const toggleReasoning = (index) => {
+  messages[index].isReasoningExpanded = !messages[index].isReasoningExpanded
+}
+// 坐标提取逻辑
+const extractCoordinates = (content) => {
+  const coordinatePattern = /\[(-?\d+\.\d+),\s*(-?\d+\.\d+)\]/g
+  const matches = [...content.matchAll(coordinatePattern)]
 
+  coordinates.value = matches.map(match => ({
+    lat: parseFloat(match[1]),
+    lng: parseFloat(match[2])
+  }))
 }
 
+const handleExampleClick = (example) => {
+  if (isLoading.value) return;
 
-const handleAIResponse = async (data) => {
-  messages.push({ role: 'user', content: data })
-  if (!ws.value || ws.value.readyState !== WebSocket.OPEN) {
-    initWebSocket()
-  }
+  // 清理问题中的引导符号
+  const cleanedQuestion = example.replace(/^["“”]|["“”]$/g, '');
+  inputText.value = cleanedQuestion;
+  sendMessage();
+};
 
-  await new Promise(resolve => {
-    if (ws.value.readyState === WebSocket.OPEN) {
-      resolve()
-    } else {
-      ws.value.addEventListener('open', resolve)
-    }
-  })
-
-  const requestData = {
-    header: {
-      app_id: APPID,
-      uid: "12345"
-    },
-    parameter: {
-      chat: {
-        domain: "4.0Ultra",
-        temperature: 0.3,
-        max_tokens: 4096
-      }
-    },
-    payload: {
-      message: {
-        text: [
-          ...messages.slice(0, -1).map(msg => ({ role: msg.role, content: msg.content })),
-          {
-            "role": "system", "content": "你是一个地理小助手，能够根据用户提供的经纬度或地名，极其精确地判断该地位置，返回该地的详细地理信息和人文特点。\
-          现在你的面前有一张世界地图，如果用户询问你地形、地名、城市等地理特征在何处时，你可以返回经纬度，其格式为[纬度：float，纬度：float]，不能出现任何在ascii码之外的符号，你可以返回多个地点，但必须详细解释" },
-          { role: "user", content: data + "如果用户询问你地形、地名、城市等地理特征在何处时，你可以返回经纬度，其格式为[纬度：float，纬度：float]，必须详细说明该地" },
-        ]
-      }
-    }
-  }
-
-  ws.value.send(JSON.stringify(requestData))
-  messages.push({ role: 'assistant', content: '' })
-  scrollToBottom()
-
-
-}
-// 保存历史记录
+// 历史记录处理
 const saveHistory = () => {
   const timestamp = new Date().toLocaleString()
-  chatHistory.value.push({ timestamp, messages: [...messages] })
+  chatHistory.value.push({
+    timestamp,
+    messages: [...messages],
+    coordinates: [...coordinates.value]
+  })
   localStorage.setItem('chatHistory', JSON.stringify(chatHistory.value))
 }
 
-// 加载历史记录
-const loadHistory = (history) => {
-  messages.splice(0, messages.length, ...history.messages)
-  isHistoryOpen.value = false
+const getHistoryPreview = (messages) => {
+  return messages.slice(-2).map(m => m.content).join(' | ')
 }
 
-// 切换历史记录侧边栏
+// 通用功能
+const renderMarkdown = (content) => marked(content)
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTo({
+        top: messagesContainer.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  })
+}
+
 const toggleHistory = () => {
   isHistoryOpen.value = !isHistoryOpen.value
 }
 
-// 增强滚动方法
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight + 100;
-      // 添加平滑滚动效果
-      messagesContainer.value.scrollTo({
-        top: messagesContainer.value.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  });
-}
 
-// 匹配经纬度
-const extractCoordinates = (msg) => {
-
-  console.log(msg.content);
-  const pattern = /纬度\s*([-+]?\d+(?:\.\d+)?)[，,]\s*经度\s*([-+]?\d+(?:\.\d+)?)/g
-  const matches = [msg.content.matchAll(pattern)]
-  console.log(matches);
-  
-  var sd = matches.map(match => ({
-    lat: parseFloat(match[1]),
-    lng: parseFloat(match[2]),
-    original: match[0]
-  }))
-  console.log(sd);
-
-}
-
-// 坐标验证
-const isValidCoordinate = (coord) => {
-  return Math.abs(coord.lat) <= 90 && Math.abs(coord.lng) <= 180
-}
-// 监听消息变化自动滚动
-watch(() => props.messages, () => {
-  nextTick(() => {
-    scrollToBottom()
-  })
-}, { deep: true })
-
+// 暴露增强后的方法
 defineExpose({
-  handleAIResponse
+  sendMessage,
+  clearChat: () => messages.splice(0, messages.length)
 });
-
-
 </script>
 
 <style scoped>
+/* 优化后的样式 */
 .chat-container {
-  --primary-color: #6173FF;
-  --assistant-bg: #F3F4FF;
-  --user-bg: #FFFFFF;
-  --border-color: #E4E7ED;
-  /* display: flex; */
+  --primary-color: #2c3e50;
+  --assistant-bg: #fffbf2;
+  --user-bg: #d3e0d1;
+  --streaming-bg: #f3f4ff;
   flex-direction: column;
   height: 100vh;
+  display: flex;
 }
 
 .history-sidebar {
-  width: 300px;
-  height: 100vh;
-  position: fixed;
-  right: -300px;
-  top: 0;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1000;
-  background: #fff;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  width: 280px;
+  border-right: 1px solid #e0e0e0;
+  background: var(--user-bg);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
 }
 
-.history-sidebar.visible {
-  transform: translateX(-300px);
+.history-list {
+  padding: 10px;
+}
+
+.history-item {
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-item:hover {
+  background: #ebebeb;
 }
 
 .chat-main {
@@ -286,6 +376,7 @@ defineExpose({
   flex-direction: column;
   background: linear-gradient(180deg, #FFFFFF 0%, #F6F7F9 100%);
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
 }
 
 .chat-header {
@@ -309,9 +400,10 @@ defineExpose({
 
 .chat-messages {
   flex: 1;
+  padding: 20px;
   overflow-y: auto;
+  background: #fcfbf9;
   padding-bottom: 60px;
-  /* 给输入框留出空间 */
 }
 
 /* 滚动条美化 */
@@ -334,51 +426,69 @@ defineExpose({
   border-radius: 2px;
 }
 
+
 .message {
   border-radius: 16px;
   margin: 12px 8px;
-  max-width: 88%;
+  padding: 16px;
+  border-radius: 12px;
+  max-width: 75%;
+  animation: messageAppear 0.3s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
-@keyframes messageAppear {
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.assistant {
-  background: var(--assistant-bg);
-  border: 1px solid var(--border-color);
-}
-
-.user {
+.message.user {
   background: var(--user-bg);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 2px 8px rgba(97, 115, 255, 0.1);
+  margin-left: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  color: #000000;
 }
 
+.message.assistant {
+  background: var(--assistant-bg);
+  margin-right: auto;
+  color: #000000;
+}
 
+.message.system {
+  background: var(--assistant-bg);
+  margin-right: auto;
+  color: #ff0000;
+}
+
+.message.streaming {
+  background: var(--streaming-bg);
+  position: relative;
+  color: #000000;
+}
 
 .message-content {
-  max-width: 450;
-  margin: 0 auto;
-  width: calc(100% - 32px);
+  line-height: 1.6;
+  font-size: 15px;
 }
 
-.message-content :deep(pre) {
-  background: rgba(0, 0, 0, 0.05);
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
 }
 
-.message-content :deep(code) {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 14px;
+.dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 3px;
+  background: #666;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
 }
 
+.dot:nth-child(2) {
+  animation-delay: 0.2s
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s
+}
 
 .input-area {
   position: sticky;
@@ -394,20 +504,13 @@ textarea {
   flex: 1;
   padding: 12px 16px;
   border: 1px solid #e5e5e5;
-  border-radius: 24px;
+  border-radius: 8px;
   min-height: 48px;
   max-height: 120px;
   font-size: 16px;
   line-height: 1.5;
   background: #f8f9fa;
   transition: all 0.2s;
-}
-
-textarea:focus {
-  background: #fff;
-  border-color: #0d534b;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
 
 button {
@@ -432,27 +535,225 @@ button::before {
   font-size: 14px;
 }
 
-@media (max-width: 768px) {
-  .chat-header {
-    padding: 12px;
+.reasoning-container {
+  margin: 8px 0;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.reasoning-header {
+  padding: 6px 12px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.reasoning-header:hover {
+  background-color: #f1f3f5;
+}
+
+.toggle-icon {
+  font-size: 14px;
+  width: 20px;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.toggle-text {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.reasoning-content {
+  padding: 10px 12px;
+  font-style: italic;
+  color: #666;
+  line-height: 1.5;
+  background: white;
+  border-top: 1px solid #eee;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 添加折叠动画 */
+.reasoning-content {
+  transition: all 0.3s ease;
+  max-height: 400px;
+  overflow-y: scroll;
+}
+
+
+
+/* 展开状态 */
+.reasoning-content[v-show="true"] {
+  max-height: 800px;
+  /* 根据实际内容调整 */
+  padding: 10px 12px;
+}
+
+/* 过渡动画 */
+.slide-enter-active,
+.slide-leave-active {
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+@keyframes messageAppear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 
-  .message {
-    max-width: 90%;
-    padding: 10px 14px;
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes typing {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0)
   }
 
-  .message-content {
-    font-size: 15px;
+  30% {
+    transform: translateY(-4px)
+  }
+}
+
+/* 新增嵌入式欢迎样式 */
+.chat-messages {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.embedded-welcome {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 160px);
+  /* 根据实际布局调整 */
+  padding: 20px;
+}
+
+.welcome-content {
+  max-width: 680px;
+  width: 100%;
+
+}
+
+.welcome-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: slideUp 0.6s ease-out;
+}
+
+.welcome-content h2 {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 1.8em;
+}
+
+.welcome-card p {
+  color: #34495e;
+  line-height: 1.6;
+  margin: 16px 0;
+  font-size: 1.1em;
+}
+
+.welcome-card ul {
+  margin: 24px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.welcome-card li {
+  padding: 12px 24px;
+  margin: 8px 0;
+  background: #f8f9fa;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.welcome-card li:hover {
+  transform: translateX(8px);
+}
+
+.icon {
+  font-size: 1.2em;
+  margin-right: 12px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.examples {
+  margin-top: 32px;
+  border-top: 1px solid #eee;
+  padding-top: 24px;
+}
+
+.examples p {
+  color: #7f8c8d;
+  margin-bottom: 16px;
+}
+
+.example-bubble {
+  padding: 12px 20px;
+  margin: 8px 0;
+  background: #f1f3f5;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.example-bubble:hover {
+  background: #e9ecef;
+  transform: scale(1.02);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
 
-  .input-area {
-    padding: 12px;
+  to {
+    opacity: 1;
+    transform: none;
   }
+}
 
-  textarea {
-    font-size: 15px;
-    padding: 10px 14px;
-  }
+/* 添加点击效果 */
+.example-questions li {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 20px;
+  margin: 6px 0;
+}
+
+.example-questions li:hover {
+  background: #f0f2f5;
+  transform: translateX(4px);
+}
+
+/* 为正在加载时添加禁用状态 */
+.example-questions li.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

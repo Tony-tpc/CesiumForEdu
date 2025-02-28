@@ -239,7 +239,7 @@ onMounted(() => {
 watch(route,() => {
   updateTheme();
   nextTick(() => {
-    loadAnimation();
+    checkAnimationCondition(router.currentRoute.value.path);
   })
 });
 
