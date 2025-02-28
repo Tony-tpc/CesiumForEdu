@@ -2,7 +2,7 @@
   <!--  首页 -->
   <section>
     <div class="container section1">
-      <video src="@/assets/worldMap.mp4" loop autoplay muted loading="lazy" class="video1"></video>
+      <video src="../assets/videos/worldMap.mp4" loop autoplay muted loading="lazy" class="video1"></video>
     </div>
     <div class="section1-title">
       地图

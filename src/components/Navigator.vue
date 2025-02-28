@@ -42,10 +42,10 @@
                   >
                     <span class="menu-fonts" :style="{ color: data.activeIndex === '/navigator/moon-phase' ? '#fffdf3' : '#0d534b' }">月相</span>
                   </el-menu-item>
-                  <el-menu-item index="/navigator/climate"
-                                :class="[{ 'active-item-3': data.activeIndex === '/navigator/climate' }]"
+                  <el-menu-item index="/navigator/galaxy"
+                                :class="[{ 'active-item-3': data.activeIndex === '/navigator/galaxy' }]"
                   >
-                    <span class="menu-fonts" :style="{ color: data.activeIndex === '/navigator/climate' ? '#fffdf3' : '#0d534b' }">星系</span>
+                    <span class="menu-fonts" :style="{ color: data.activeIndex === '/navigator/galaxy' ? '#fffdf3' : '#0d534b' }">星系</span>
                   </el-menu-item>
                   <el-menu-item index="/navigator/world-map"
                                 :class="[{ 'active-item-4': data.activeIndex === '/navigator/world-map' }]"
@@ -143,7 +143,7 @@ const updateTheme = throttle(() => {
   if (data.activeIndex === '/navigator/geo-graph') {
     data.isDarkMode = true;
     data.logo = darkLogo;
-  } else if (data.activeIndex === '/navigator/landform') {
+  } else if (data.activeIndex === '/navigator/landform' || data.activeIndex === '/navigator/moon-phase' || data.activeIndex === '/navigator/galaxy') {
     data.isDarkMode = false;
     data.logo = lightLogo;
   } else {
@@ -196,8 +196,9 @@ const loadAnimation = () => {
 const checkAnimationCondition = async (path) => {
   const scrollTop = localStorage.getItem('scrollPosition');
   const needLoading = path === '/navigator/smart-recs' || path === '/navigator/insight-lab' || path === '/navigator/geo-graph'
+  const noNeedLoading = path === '/navigator/landform' || path === '/navigator/moon-phase' || path === '/navigator/galaxy' || path === '/navigator/world-map'
   console.log(`scrollTop = ${scrollTop}`);
-  if (scrollTop === '0' || needLoading) {
+  if (!noNeedLoading && (scrollTop === '0' || needLoading)) {
     showAnimation.value = true;
     loadAnimation()
     showAnimation.value = false;

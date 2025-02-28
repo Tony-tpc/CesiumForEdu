@@ -97,7 +97,9 @@
         <h2 class="section2-title">直观可视化，探索地理奥秘</h2>
         <div class="step-item">Step 1: 了解</div>
         <p class="section2-subtitle">沉浸式 3D 体验，让你身临其境</p>
-        <p class="section2-text">通过智能化的3D地形和动态气候等模型，用户能够亲身体验到地理知识的变化与奥秘。在虚拟环境中，学生可以随时与地球进行互动，感受地形、气候、月相等自然现象的真实变化。这种互动式的学习方式不再仅仅局限于书本和图表，让知识更加生动、直观，激发学习兴趣，提升学习效率。</p>
+        <p class="section2-text">
+          通过智能化的<strong>3D 地形</strong>和<strong>星系展示</strong>模型，用户能够亲身体验地理与天文学的奥秘。在虚拟环境中，学生可以随时与<strong>地球地形</strong>交互，观察<strong>月相盈亏的动态变化</strong>，同时探索<strong>太阳系中行星的轨迹与相对位置</strong>。这种互动式的学习方式突破了传统书本和图表的限制，让知识更加<strong>生动直观</strong>，在沉浸式探索中激发学习兴趣，助力学生提升学习效率。
+        </p>
         <img src="@/assets/Landform-test.png" alt="智绘天地" loading="lazy" class="section2-img1"/>
         <img src="@/assets/Moon-phase-test.png" alt="智绘天地" loading="lazy" class="section2-img2"/>
       </div>
@@ -106,7 +108,7 @@
         <h2 class="section2-title">知识图谱 + AI 互动</h2>
         <div class="step-item">Step 2: 学习</div>
         <p class="section2-subtitle">结构化知识，AI 助教解答</p>
-        <p class="section2-text">地理知识图谱通过结构化的方式帮助学生全面理解地理学科的知识体系。借助AI技术，我们将复杂的地理学概念和数据组织成图谱，学生可以通过图谱轻松获取相关知识。在学习过程中，AI助教会实时解答学生的问题，结合大数据分析为学生提供定制化学习路径，帮助学生在最短时间内掌握所需知识。</p>
+        <p class="section2-text"><strong>地理知识图谱</strong>通过结构化的方式帮助学生全面理解地理学科的知识体系。借助<strong>AI技术</strong>，我们将复杂的地理学概念和数据组织成图谱，学生可以通过图谱轻松获取相关知识。在学习过程中，<strong>AI助教</strong>会实时解答学生的问题，结合<strong>大数据分析</strong>为学生提供定制化学习路径，帮助学生在最短时间内掌握所需知识。</p>
         <img src="@/assets/Geo-graph-test.png" alt="知象图谱" loading="lazy" class="section2-img1"/>
         <img src="@/assets/Geo-graph-test-2.jpeg" alt="知象图谱" loading="lazy" class="section2-img2"/>
       </div>
@@ -115,7 +117,7 @@
         <h2 class="section2-title">智能测评，精准诊断</h2>
         <div class="step-item">Step 3: 测试</div>
         <p class="section2-subtitle">找到薄弱点，针对性提升</p>
-        <p class="section2-text">智能测评系统能够实时监控学生的学习进度，分析学生在不同知识点上的掌握程度。当学生进行习题测试时，系统不仅会自动批改，还会针对性地提供详细的解析和学习建议。通过深入分析学生的错误，AI系统会帮助学生找出薄弱环节，精准定位知识盲区，提供个性化的学习方案，帮助学生快速提升。</p>
+        <p class="section2-text"><strong>智能测评系统</strong>能够实时监控学生的学习进度，分析学生在不同知识点上的掌握程度。当学生进行习题测试时，系统不仅会自动批改，还会针对性地提供详细的解析和学习建议。通过深入分析学生的错误，<strong>AI系统</strong>会帮助学生找出<strong>薄弱环节</strong>，精准定位知识盲区，提供个性化的学习方案，帮助学生快速提升。</p>
         <img src="@/assets/Insight-lab-test.png" alt="探知问学" loading="lazy" class="section2-img1"/>
         <img src="@/assets/Insight-lab-test-2.png" alt="探知问学" loading="lazy" class="section2-img2"/>
       </div>
@@ -124,7 +126,7 @@
         <h2 class="section2-title">个性化推荐，定制学习路线</h2>
         <div class="step-item">Step 4: 巩固</div>
         <p class="section2-subtitle">智能推荐，学习不再盲目</p>
-        <p class="section2-text">学习不再是一成不变的重复过程，通过AI技术分析学生的学习轨迹，我们能够为每个学生量身定制学习路线。基于学生的学习进度和掌握情况，系统自动推荐最适合的学习资源，包括习题、文章、视频等。这样的个性化推荐让学生能够在正确的时间接触到最有价值的内容，从而有效巩固所学知识，进一步提升学习效率。</p>
+        <p class="section2-text">学习不再是一成不变的重复过程，通过<strong>AI技术</strong>分析学生的学习轨迹，我们能够为每个学生量身定制学习路线。基于学生的学习进度和掌握情况，系统自动推荐<strong>最适合的学习资源</strong>，包括习题、文章、视频等。这样的个性化推荐让学生能够在正确的时间接触到<strong>最有价值的内容</strong>，从而有效巩固所学知识，进一步提升学习效率。</p>
         <img src="@/assets/Smart-recs-test-1.png" alt="智荐学堂" loading="lazy" class="section2-img1"/>
         <img src="@/assets/Smart-recs-test-2.png" alt="智荐学堂" loading="lazy" class="section2-img2"/>
       </div>
@@ -142,22 +144,22 @@
         <!--    粒子背景 + 上、下、左、右四个视频  -->
         <div id="video-particles" class="particles-container">
           <div class="upper-left">
-            <video src="@/assets/Cesium-test.mp4" autoplay muted loop loading="lazy" class="video1"></video>
+            <video src="../assets/videos/Cesium-test.mp4" autoplay muted loop loading="lazy" class="video1"></video>
           </div>
           <div class="upper-right">
-            <video src="@/assets/Verge3D-Web-Interactive.mp4" autoplay muted loop loading="lazy" class="video2"></video>
+            <video src="../assets/videos/Verge3D-Web-Interactive.mp4" autoplay muted loop loading="lazy" class="video2"></video>
           </div>
           <div class="lower-left">
-            <video src="@/assets/climate.mp4" autoplay muted loop loading="lazy" class="video3"></video>
+            <video src="../assets/videos/Galaxy.mp4" autoplay muted loop loading="lazy" class="video3"></video>
           </div>
           <div class="lower-right">
-            <video src="@/assets/worldMap.mp4" autoplay muted loop loading="lazy" class="video4"></video>
+            <video src="../assets/videos/worldMap.mp4" autoplay muted loop loading="lazy" class="video4"></video>
           </div>
           <!--   文字介绍  -->
           <div>
             <p class="video-text-1">地形</p>
             <p class="video-text-2">月相</p>
-            <p class="video-text-3">气候</p>
+            <p class="video-text-3">星系</p>
             <p class="video-text-4">地图</p>
           </div>
         </div>
@@ -210,7 +212,7 @@
         <div class="buttons-container">
           <el-button class="buttons-4" type="success" @click="router.push('/navigator/landform')">地形</el-button>
           <el-button class="buttons-4" type="primary" @click="router.push('/navigator/moon-phase')">月相</el-button>
-          <el-button class="buttons-4" type="warning" @click="router.push('/navigator/climate')">气候</el-button>
+          <el-button class="buttons-4" type="warning" @click="router.push('/navigator/galaxy')">星系</el-button>
           <el-button class="buttons-4" type="info" @click="router.push('/navigator/world-map')">地图</el-button>
         </div>
       </div>
