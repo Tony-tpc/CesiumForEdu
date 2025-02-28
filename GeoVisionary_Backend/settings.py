@@ -22,6 +22,10 @@ INSTALLED_APPS = [
     'import_export',
     'corsheaders',
     'rest_framework',
+    'neo4jDB.apps.Neo4JdbConfig',
+    'neo4j',
+    'neomodel',
+    'django_neomodel',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -30,9 +34,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'users.apps.UsersConfig',
     'proxy.apps.ProxyConfig',
-    'neo4jDB.apps.Neo4JdbConfig'
+    'api.apps.ApiConfig',
 ]
-
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
