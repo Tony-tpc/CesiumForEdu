@@ -232,7 +232,6 @@ onMounted(() => {
   getMargin();
   // 响应式调节导航栏
   window.addEventListener('resize',getMargin);
-  console.log(`router.currentRoute.value.path = ${router.currentRoute.value.path}`);
   checkAnimationCondition(router.currentRoute.value.path);
 })
 

@@ -5,7 +5,7 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  top: {
+  bottom: {
     type: Number,
     default: 0,
   },
@@ -16,8 +16,12 @@ const props = defineProps({
 })
 
 let textInput = ref(props.input);
+// 定义并在关闭标签后抛出事件
+const emit = defineEmits(['inputBoxClosed']);
 const handleCloseInputBox = () => {
+  const text = textInput.value;
   textInput.value = '';
+  emit('inputBoxClosed', text);
 }
 
 </script>
@@ -36,7 +40,7 @@ const handleCloseInputBox = () => {
 .input-box-container {
   display: inline-block;
   position: absolute;
-  top: calc(v-bind('props.top') * 1px);
+  bottom: calc(v-bind('props.bottom') * 1px);
   left: calc(v-bind('props.left') * 1px);
   min-width: 20px;
   max-width: 80vw; /* 最大宽度限制 */
@@ -45,11 +49,11 @@ const handleCloseInputBox = () => {
 
 .content {
   display: inline-block;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 30px;
   padding: 0 10px;
-  background-color: #5fc6ff;
-  color: #0d0f1a;
+  background-color: #40a2f6;
+  color: #fffdf3;
   border-radius: 6px;
   white-space: nowrap;
   overflow: hidden;

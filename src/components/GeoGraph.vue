@@ -1,37 +1,71 @@
 <template>
   <section>
     <!--  加载背景  -->
-    <Loading title=".section1-title" subtitle=".section1-subtitle" :needLoading="showAnimation"></Loading>
+    <Loading title=".section1-title" subtitle=".section1-subtitle"></Loading>
   </section>
   <section>
+    <!--  固定对话内容  -->
     <div>
       <!--  Live2D -->
       <canvas ref="canvas" class="live2Dmodel" @click="changeDisplay"></canvas>
+      <!--  便捷标签 -->
+      <div class="convenient-tags-container">
+        <el-button class="zoom-outputArea-btn">
+          <el-icon><FullScreen /></el-icon>
+        </el-button>
+      </div>
+      <!--   输入和输出   -->
       <div class="LLM-input-output">
         <el-alert title="请注意，输入不能为空" type="error" center show-icon class="warning-alert" :closable="false"/>
-        <div ref="input-container">
-          <el-input
-              v-model="data.textInput"
-              :rows="2"
-              type="textarea"
-              resize="none"
-              :autosize="{minRows: 1, maxRows: 4}"
-              placeholder="您可以在这里输入您想和小助教对话的内容！"
-              class="inputArea"
-              @keydown="handleKeydown"
-              id="textInputArea"
-              @input="handleInput"
-          />
-          <InputBox v-for="item in inputBoxes" :input="item.input"/>
-          <el-button v-if="!isGenerating" type="primary" @click="handleChatWithLocalLLM" class="submit-btn" :disabled="data.isDisabled">
-            <el-icon  ><Top /></el-icon>
-          </el-button>
-          <el-button v-else type="primary" @click="handleStopLLMGeneration" class="stop-btn">
-            <el-icon  ><Close /></el-icon>
-          </el-button>
+        <div style="position: relative;display: flex">
+          <!-- 标签 -->
+          <div class="tag-container" id="tag-container">
+            <InputBox v-for="item in inputBoxes"
+                      :key="item.input"
+                      :input="item.input"
+                      :bottom="0"
+                      style="position: relative;pointer-events: auto"
+                      @inputBoxClosed="handleInputBoxClosed"
+            />
+          </div>
+          <!-- 输入框 -->
+          <div ref="input-container" style="position: fixed;z-index: 12;">
+            <el-input
+                v-model="data.textInput"
+                :rows="2"
+                type="textarea"
+                resize="none"
+                :autosize="{minRows: 1, maxRows: 4}"
+                placeholder="您可以在这里输入您想和小助教对话的内容！"
+                class="inputArea"
+                @keydown="handleKeydown"
+                id="textInputArea"
+            />
+            <el-button v-if="!isGenerating" type="primary" @click="handleChatWithLocalLLM" class="submit-btn" :disabled="data.isDisabled">
+              <el-icon  ><Top /></el-icon>
+            </el-button>
+            <el-button v-else type="primary" @click="handleStopLLMGeneration" class="stop-btn">
+              <el-icon  ><Close /></el-icon>
+            </el-button>
+          </div>
         </div>
+        <!--  输出区域  -->
         <div class="outputArea" @click="changeOutputArea">
-          <ChatContent :showCursor="showCursor" :content="content"></ChatContent>
+          <ChatMessages
+              :messages="conversation"
+              :user-config="{
+                name: `${userState.user? userState.user.username : '用户'}`,
+                bgColor: '#d3e0d1',
+                textColor: '#fffdf3'
+              }"
+              :llm-config="{
+                name: 'AI助教',
+                bgColor: '#f7f2eb',
+                textColor: '#fffdf3',
+                errorColor: '#ff4444'
+              }"
+              :show-llm-cursor="isGenerating"
+          />
         </div>
       </div>
     </div>
@@ -56,8 +90,6 @@
       <div class="switch-words">便捷模式</div>
       <div class="switch-mode-container wrapper"><SwitchButton v-model="isActive"/></div>
       <div id="graph-container" style="width: 100%; height: 90%; border: 1px solid #ddd;position: absolute;top: 10%;"></div>
-      <div style="position: fixed;bottom: 10%;left: 40%;background-color: #0d0f1a;width: 100px;height: 100px;" id="test">
-      </div>
     </div>
   </section>
 </template>
@@ -65,20 +97,16 @@
 <script setup>
 import * as PIXI from 'pixi.js';
 import { Live2DModel } from 'pixi-live2d-display/cubism4';
-import {ref, onMounted, onUnmounted, reactive, inject, onBeforeUnmount, computed} from 'vue';
+import {ref, onMounted, onUnmounted, reactive, onBeforeUnmount, nextTick, watch} from 'vue';
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import neo4j from 'neo4j-driver';
 import { Network } from 'vis-network';
 import router from "@/router/index.js";
-import {throttle} from "lodash";
-import InputBox from "@/components/InputBox.vue";
-import SwitchButton from "@/components/SwitchButton.vue";
+import {userState} from "@/store/userStore.js";
 gsap.registerPlugin(ScrollTrigger);
 
 window.PIXI = PIXI;
-// 绑定图谱容器
-const showAnimation = inject("showAnimation");
 
 const data = reactive({
   textInput:"",
@@ -88,18 +116,22 @@ const data = reactive({
   nodeInfo:[],
 })
 
-const canvas = ref(null);
-const app = ref(null);
-const model = ref(null);
-const content = ref('');
-const showCursor = ref(false);
+// live2D
+const canvas = ref(null); // live2D 载体
+const app = ref(null); // live2D 应用
+const model = ref(null); // live2D 模型
+
+// LLM对话
+const showCursor = ref(false); // 控制光标
 const isGenerating = ref(false); // 控制加载状态
-const inputContainer = ref(null);
-const inputBoxes = ref([]);
-const isActive = ref(true);
+const conversation = ref([  { sender: 'llm', content: '您好，我是您的专属AI助教，请问有什么可以帮到您？' },]); // 对话记录
+const streamingMessageRef = ref(null); // 当前流式消息的引用
 let controller = new AbortController();  // 用于控制请求
 let reader = null;  // 读取流
-let lastHeight = 0; // 记录上一次高度
+
+// 其他内容
+const inputBoxes = ref([]); // 标签盒
+const isActive = ref(true); // 切换便捷模式
 
 // 封装 Live2D 加载逻辑
 const loadLive2D = async () => {
@@ -148,13 +180,13 @@ const updatePosition = () => {
   model.value.x = -0.05 * window.innerWidth;
 };
 
+// 历史记录
 const chatHistory = ref([
-  { role: "system", content: "你是一位经验丰富的地理老师，你的学生目前遇到了一些地理问题，你需要耐心地帮助他解决问题，并通俗易懂地讲解。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。记住，你只能用中文思考和回答。" }
+  { role: "system", content: "你是一位经验丰富的地理老师，你的学生目前遇到了一些地理问题，你需要耐心地帮助他解决问题，并通俗易懂地讲解。记住，你只能用中文思考和回答。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。" }
 ]);
 
 // 向本地LLM发送流式请求
 const chatWithLocalLLM = async () => {
-  content.value = ""; // 清空历史内容
   isGenerating.value = true; // 进入生成状态
   showCursor.value = true; // 显示光标
 
@@ -162,9 +194,30 @@ const chatWithLocalLLM = async () => {
   controller = new AbortController();
   const signal = controller.signal;
 
-  if(data.textInput) {
+  if(data.textInput || inputBoxes.value) {
+    let userContent = data.textInput;
+    if (inputBoxes.value.length >= 1) {
+      userContent += '（我想要了解关于:'
+      for (let i = 0; i < inputBoxes.value.length - 1; i++) {
+        userContent += `${inputBoxes.value[i].input}、`;
+      }
+      userContent += `${inputBoxes.value[inputBoxes.value.length - 1].input}的内容）`;
+    }
     // 把用户输入添加到历史记录
-    chatHistory.value.push({ role: "user", content: data.textInput });
+    const userMessage = { role: "user", content: userContent };
+    chatHistory.value.push(userMessage);
+    conversation.value.push({ // 同时添加到对话列表
+      sender: 'user',
+      content: userContent
+    });
+    // 创建并添加流式消息占位符
+    const streamMessage = {
+      sender: 'llm',
+      content: '',
+      isStreaming: true
+    };
+    conversation.value.push(streamMessage);
+    streamingMessageRef.value = streamMessage; // 保存当前流式消息引用
     try {
       const response = await fetch("http://localhost:1234/v1/chat/completions", {
         method: "POST",
@@ -173,10 +226,10 @@ const chatWithLocalLLM = async () => {
           model: "deepseek-r1-distill-llama-8b", // phi-4 deepseek-r1-distill-llama-8b deepseek-r1-distill-qwen-14b
           messages: chatHistory.value,
           temperature: 0.6,
-          max_tokens: 8192,
+          max_tokens: 4096,
           stream: true, // 启用流式返回
         }),
-        signal, // 绑定信号
+        signal,// 绑定信号
       });
 
       if (!response.ok || !response.body) throw new Error("LLM 请求失败");
@@ -184,6 +237,7 @@ const chatWithLocalLLM = async () => {
       // 获取可读流
       reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
+
 
       while (true) {
         const { done, value } = await reader.read();
@@ -199,7 +253,8 @@ const chatWithLocalLLM = async () => {
             try {
               const json = JSON.parse(line.replace("data: ", ""));
               if (json.choices && json.choices[0].delta.content) {
-                content.value += json.choices[0].delta.content; // 追加生成的文本
+                // 实时更新流式消息内容
+                streamingMessageRef.value.content += json.choices[0].delta.content;
               }
             } catch (err) {
               console.error("解析错误:", err);
@@ -208,17 +263,26 @@ const chatWithLocalLLM = async () => {
         }
       }
       // 生成完成后，把 LLM 的回复也加入历史记录
-      chatHistory.value.push({ role: "assistant", content: content.value });
+      chatHistory.value.push({ role: "assistant", content: streamingMessageRef.value.content});
       console.log(chatHistory.value);
     } catch (error) {
-      if (error.name === "AbortError") {
-        console.log("LLM 请求已被取消");
+      if (error.name === 'AbortError') {
+        console.log('请求中止');
+        // 移除未完成的流式消息
+        const index = conversation.value.indexOf(streamingMessageRef.value);
+        if (index > -1) conversation.value.splice(index, 1);
       } else {
-        console.error("LLM 生成错误:", error);
+        console.error('请求失败:', error);
+        // 标记错误状态
+        streamingMessageRef.value.error = true;
+        streamingMessageRef.value.content += '\n[生成中断]';
       }
     } finally {
       isGenerating.value = false; // 结束生成状态
       showCursor.value = false; // 隐藏光标
+      streamingMessageRef.value = null;
+
+      // 恢复按钮状态
       setTimeout(() => {
         const submitBtn = document.querySelector('.submit-btn');
         if (!submitBtn) {
@@ -244,7 +308,7 @@ const stopLLMGeneration = () => {
 
 // 点击交互按钮
 const handleChatWithLocalLLM = () => {
-  if (data.textInput) {
+  if (data.textInput || inputBoxes.value.length !== 0) {
     chatWithLocalLLM();
     data.textInput = "";
   } else  {
@@ -300,12 +364,13 @@ const changeOutputArea = () => {
 const changeDisplay = () => {
   if (data.displayEverything) {
     gsap.timeline()
-        .to(['.outputArea','.inputArea','.submit-btn'],{opacity:0,ease:'power2.out'})
-        .set(['.outputArea','.inputArea','.submit-btn'],{display:'none'})
+        .to(['.outputArea','.inputArea','.submit-btn','.tag-container','.stop-btn'],{opacity:0,ease:'power2.out'})
+        .set(['.outputArea','.inputArea','.submit-btn','.tag-container','.stop-btn'],{display:'none'})
     data.displayEverything = false;
   } else {
-    gsap.set(['.outputArea','.inputArea','.submit-btn'],{display:'block'});
-    gsap.to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'});
+    gsap.set(['.outputArea','.inputArea','.submit-btn','.stop-btn'],{display:'block'});
+    gsap.set('.tag-container',{display:'flex',flexWrap:'wrap',overflow:'hidden'})
+    gsap.to(['.outputArea','.inputArea','.submit-btn','.tag-container','.stop-btn'],{opacity:1,ease:'power2.in'});
     data.displayEverything = true;
   }
 }
@@ -313,27 +378,21 @@ const changeDisplay = () => {
 // 动态获取输入文本框的 top 值
 const getInputAreaTop = () => {
   const inputElement = document.querySelector('#textInputArea');
-  const testElement = document.querySelector('#test');
-  if (inputElement && testElement) {
+  const tagsElement = document.querySelector('#tag-container');
+  if (inputElement && tagsElement) {
     const inputTop = inputElement.getBoundingClientRect().top;
-    testElement.style.top = `${inputTop - 120}px`;
+    tagsElement.style.bottom = `${window.innerHeight - inputTop + 10}px`;
   }
 }
 
-// 监听输入事件
-const handleInput = () => {
-  nextTick(() => {
-    const inputElement = document.querySelector('#textInputArea');
-    if (inputElement) {
-      // 检测实际高度是否变化
-      const currentHeight = inputElement.getBoundingClientRect().top;
-      if (currentHeight !== lastHeight) {
-        lastHeight = currentHeight;
-        getInputAreaTop(); // 高度变化时更新位置
-      }
-    }
-  });
-};
+// 监听标签关闭事件
+const handleInputBoxClosed = (text) => {
+  const obj = {'input':text}
+  const index = inputBoxes.value.findIndex((item) => JSON.stringify(item) === JSON.stringify(obj));
+  if (index !== -1) {
+    inputBoxes.value.splice(index, 1);
+  }
+}
 
 onMounted(() => {
   // 加载监听器
@@ -471,11 +530,15 @@ onMounted(() => {
         if (params.nodes.length > 0 && isActive.value) {
           const nodeId = params.nodes[0];
           const node = nodes.get(nodeId);
-          gsap.set(['.outputArea','.inputArea','.submit-btn'],{display:'block'});
-          gsap.to(['.outputArea','.inputArea','.submit-btn'],{opacity:1,ease:'power2.in'});
+          gsap.set(['.outputArea','.inputArea','.submit-btn','.stop-btn'],{display:'block'});
+          gsap.set('.tag-container',{display: 'flex',flexWrap:'wrap',overflow:'hidden'});
+          gsap.to(['.outputArea','.inputArea','.submit-btn','.tag-container','.stop-btn'],{opacity:1,ease:'power2.in'});
           data.displayEverything = true;
-          data.textInput += node.label;
-          inputBoxes.value.push({'input':node.label});
+          const obj = {'input':node.label};
+          const exists = inputBoxes.value.some(item => JSON.stringify(item) === JSON.stringify(obj));
+          if (!exists) {
+            inputBoxes.value.push({'input':node.label});
+          }
           getInputAreaTop();
         }
       });
@@ -507,7 +570,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   localStorage.setItem('scrollPosition',window.scrollY);
   localStorage.setItem('route',router.currentRoute.value.path);
-  console.log(`current route: ${router.currentRoute.value.path},scrollPosition: ${window.scrollY}`);
 })
 
 // 组件卸载时销毁 WebGL 资源，停止对话
@@ -521,9 +583,49 @@ onUnmounted(() => {
   stopLLMGeneration();
 });
 
+// 自动滚动
+const scrollToBottom = () => {
+  const container = document.querySelector('.outputArea');
+  if (container) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+// 在消息更新后调用
+watch(() => conversation.value, () => {
+  nextTick(scrollToBottom);
+}, { deep: true })
+
+// 自动调整行高
+watch(() => data.textInput, () => {
+  nextTick(() => {
+    // 添加 requestAnimationFrame 确保浏览器完成布局
+    requestAnimationFrame(() => {
+      getInputAreaTop();
+    });
+  });
+}, { deep: true });
+
 </script>
 
 <style scoped>
+/* 标签展示框 */
+.tag-container {
+  position: fixed;
+  bottom: 15%;
+  left: 25%;
+  width: 52%;
+  gap: 8px;
+  opacity: 0;
+  display: none;
+  pointer-events: none;
+  z-index: 11;
+}
+/* 移除滚动条 */
+.tag-container::-webkit-scrollbar {
+  display: none;
+}
+
 /* 用户输入框 */
 :deep(.el-textarea__inner) {
   border-radius: 12px !important;
@@ -540,6 +642,9 @@ onUnmounted(() => {
   z-index: 11;
   display: none;
   opacity: 0;
+}
+:deep(.el-textarea__inner) {
+  padding: 10px 25px 35px 15px; /* 调整这个值来控制文字与边框的间距 */
 }
 
 /* 输入按钮 */
@@ -559,7 +664,7 @@ onUnmounted(() => {
   display: none;
   opacity: 0;
 }
-
+/* 终止按钮 */
 .stop-btn {
   display: block;
   opacity: 1;
@@ -606,6 +711,21 @@ canvas {
   right: -35%;
   border: none;
   z-index: 100;
+}
+
+/* 便捷标签容器 */
+.convenient-tags-container {
+  position: fixed;
+  top: 21%;
+  right: 24%;
+  z-index: 12;
+}
+
+/* 便捷标签 */
+.zoom-outputArea-btn {
+  padding: 7px;
+  height: auto;
+  border-radius: 100%;
 }
 
 /* 公共容器 */
