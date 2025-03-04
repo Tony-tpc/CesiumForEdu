@@ -73,6 +73,7 @@ const lastLlmIndex = computed(() => {
         >
           <ChatContent
               :content="message.content"
+              :index="index"
               :show-cursor="message.sender === 'llm' &&
                         showLlmCursor &&
                         index === lastLlmIndex"

@@ -51,63 +51,49 @@ canvas {
     box-shadow: 0 0 8px rgba(0,0,0,.12);
 }
 
-/* 浏览器滚动条样式 */
-::-webkit-scrollbar-corner,
-::-webkit-scrollbar-corner {
-    width: 0;
-}
-
-::-webkit-scrollbar,
+/* 滚动条轨道（背景） */
 ::-webkit-scrollbar {
-    width: 16px;
+    width: 16px; /* 宽度 */
     height: 16px;
-    background: transparent;
+    background: transparent; /* 透明背景 */
 }
 
-::-webkit-scrollbar-track,
+/* 滚动条轨道槽 */
 ::-webkit-scrollbar-track {
     background: #f5f5f5;
-    border-left: 1px solid rgba(244, 244, 244, 0.14);
+    border-radius: 10px;
+    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease-in-out;
 }
 
-::-webkit-scrollbar-thumb,
+/* 滚动条按钮（拖动块） */
 ::-webkit-scrollbar-thumb {
-    border-radius: 8px;
-    border: 4px solid transparent;
+    background: #0d534b; /* 默认墨绿色 */
+    border-radius: 10px;
+    border: 4px solid rgba(0, 0, 0, 0);
     background-clip: content-box;
-    background-color: #8b8b8b;
+    box-shadow: 0 0 8px rgba(13, 83, 75, 0.3);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* 悬停时不变大，只加光效 */
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #636363;
+    background: #022e2b;
+    background-clip: content-box;
+    box-shadow: 0 0 12px rgba(13, 83, 75, 0.5); /* 柔和光效 */
+    opacity: 0.9; /* 透明度微调 */
+    cursor: pointer;
 }
 
-/* 自定义think标签 */
-think {
-    display: block;
-    margin: 16px 0;
-    padding: 0 10px;
-    background: rgba(138, 99, 210, 0.1);
-    border-left: 4px solid #8a63d2;
-    color: #6c4298;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    height: 0;
-    overflow: hidden;
-    width: inherit;
-    left: inherit;
+::-webkit-scrollbar-thumb:active {
+    animation: breathing 1.5s infinite alternate;
 }
 
-think::before {
-    content: "💡 思考中...";
-    font-weight: bold;
-    color: #8a63d2;
-    display: block;
-    margin-bottom: 8px;
-    font-style: italic;
-}
-
-think.active {
-    height: auto;
-    padding: 12px 10px;
-    opacity: 1;
+@keyframes breathing {
+    from {
+        box-shadow: 0 0 15px rgba(13, 83, 75, 0.6);
+    }
+    to {
+        box-shadow: 0 0 20px rgba(13, 83, 75, 0.3);
+    }
 }

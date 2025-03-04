@@ -244,7 +244,7 @@ watch(route,() => {
 });
 
 onBeforeUnmount(() => {
-  localStorage.setItem("scrollPosition", window.scrollY);
+  localStorage.removeItem("scrollPosition", window.scrollY);
 });
 </script>
 

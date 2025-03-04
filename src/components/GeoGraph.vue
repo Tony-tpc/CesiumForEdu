@@ -10,9 +10,16 @@
       <canvas ref="canvas" class="live2Dmodel" @click="changeDisplay"></canvas>
       <!--  便捷标签 -->
       <div class="convenient-tags-container">
-        <el-button class="zoom-outputArea-btn">
-          <el-icon><FullScreen /></el-icon>
+        <el-button class="zoom-outputArea-btn" @click="changeOutputArea">
+          <el-icon v-if="!data.changeArea"><ZoomIn /></el-icon>
+          <el-icon v-else><ZoomOut /></el-icon>
         </el-button>
+        <el-button class="refresh-outputArea-btn" @click="refreshPosition"
+                   @mouseenter="animateTooltip('show')"
+                   @mouseleave="animateTooltip('hide')">
+          <el-icon><Refresh /></el-icon>
+        </el-button>
+        <div class="gsap-tooltip">重置输出框</div>
       </div>
       <!--   输入和输出   -->
       <div class="LLM-input-output">
@@ -50,7 +57,7 @@
           </div>
         </div>
         <!--  输出区域  -->
-        <div class="outputArea" @click="changeOutputArea">
+        <div class="outputArea" ref="outputAreaRef">
           <ChatMessages
               :messages="conversation"
               :user-config="{
@@ -97,14 +104,14 @@
 <script setup>
 import * as PIXI from 'pixi.js';
 import { Live2DModel } from 'pixi-live2d-display/cubism4';
-import {ref, onMounted, onUnmounted, reactive, onBeforeUnmount, nextTick, watch} from 'vue';
+import {ref, onMounted, onUnmounted, reactive, nextTick, watch} from 'vue';
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Draggable } from "gsap/Draggable";
 import neo4j from 'neo4j-driver';
 import { Network } from 'vis-network';
-import router from "@/router/index.js";
 import {userState} from "@/store/userStore.js";
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger,Draggable);
 
 window.PIXI = PIXI;
 
@@ -124,7 +131,7 @@ const model = ref(null); // live2D 模型
 // LLM对话
 const showCursor = ref(false); // 控制光标
 const isGenerating = ref(false); // 控制加载状态
-const conversation = ref([  { sender: 'llm', content: '您好，我是您的专属AI助教，请问有什么可以帮到您？' },]); // 对话记录
+const conversation = ref([  { sender: 'llm', content: '您好呀，我是您的专属AI助教，请问有什么可以帮到您？' },]); // 对话记录
 const streamingMessageRef = ref(null); // 当前流式消息的引用
 let controller = new AbortController();  // 用于控制请求
 let reader = null;  // 读取流
@@ -132,6 +139,8 @@ let reader = null;  // 读取流
 // 其他内容
 const inputBoxes = ref([]); // 标签盒
 const isActive = ref(true); // 切换便捷模式
+const autoScroll = ref(true);
+const outputAreaRef = ref(null);
 
 // 封装 Live2D 加载逻辑
 const loadLive2D = async () => {
@@ -182,11 +191,11 @@ const updatePosition = () => {
 
 // 历史记录
 const chatHistory = ref([
-  { role: "system", content: "你是一位经验丰富的地理老师，你的学生目前遇到了一些地理问题，你需要耐心地帮助他解决问题，并通俗易懂地讲解。记住，你只能用中文思考和回答。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。" }
+  { role: "system", content: "你是一位经验丰富的高中地理老师，你的学生目前遇到了一些地理问题，你需要耐心地帮助他解决问题，并通俗易懂地讲解。记住，你只能用中文思考和回答。如果他输入的是其他方面的问题，也请像个老师一样耐心教导他。" }
 ]);
 
 // 向本地LLM发送流式请求
-const chatWithLocalLLM = async () => {
+const chatWithLLM = async () => {
   isGenerating.value = true; // 进入生成状态
   showCursor.value = true; // 显示光标
 
@@ -219,7 +228,7 @@ const chatWithLocalLLM = async () => {
     conversation.value.push(streamMessage);
     streamingMessageRef.value = streamMessage; // 保存当前流式消息引用
     try {
-      const response = await fetch("http://localhost:1234/v1/chat/completions", {
+      const response = await fetch("http://localhost:8040/proxy/chat/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -245,22 +254,27 @@ const chatWithLocalLLM = async () => {
 
         // 先解码成字符串
         const chunk = decoder.decode(value, { stream: true });
-
-        // 解析 JSON，提取内容
-        const lines = chunk.split("\n"); // API 可能返回多行
-        for (const line of lines) {
-          if (line.trim().startsWith("data:")) {
-            try {
-              const json = JSON.parse(line.replace("data: ", ""));
-              if (json.choices && json.choices[0].delta.content) {
-                // 实时更新流式消息内容
-                streamingMessageRef.value.content += json.choices[0].delta.content;
-              }
-            } catch (err) {
-              console.error("解析错误:", err);
-            }
-          }
+        if (chunk === "[DONE]") {
+          console.log("流式结束");
+          break; // 停止流式读取
         }
+        streamingMessageRef.value.content += chunk;
+
+        // // 解析 JSON，提取内容
+        // const lines = chunk.split("\n"); // API 可能返回多行
+        // for (const line of lines) {
+        //   if (line.trim().startsWith("data:")) {
+        //     try {
+        //       const json = JSON.parse(line.replace("data: ", ""));
+        //       if (json.choices && json.choices[0].delta.content) {
+        //         // 实时更新流式消息内容
+        //         streamingMessageRef.value.content += json.choices[0].delta.content;
+        //       }
+        //     } catch (err) {
+        //       console.error("解析错误:", err);
+        //     }
+        //   }
+        // }
       }
       // 生成完成后，把 LLM 的回复也加入历史记录
       chatHistory.value.push({ role: "assistant", content: streamingMessageRef.value.content});
@@ -309,7 +323,11 @@ const stopLLMGeneration = () => {
 // 点击交互按钮
 const handleChatWithLocalLLM = () => {
   if (data.textInput || inputBoxes.value.length !== 0) {
-    chatWithLocalLLM();
+    nextTick(() => {
+      scrollToBottom(); // 发送后强制滚动
+      autoScroll.value = true; // 确保自动滚动开启
+    });
+    chatWithLLM();
     data.textInput = "";
   } else  {
     data.isDisabled = true;
@@ -338,7 +356,7 @@ const handleStopLLMGeneration = () => {
 // 点击回车交互
 const handleKeydown = (e) => {
   if (e.key === "Enter") {
-    if (!e.shiftKey) {
+    if (!e.shiftKey && !isGenerating.value) {
       e.preventDefault();
       handleChatWithLocalLLM();
     }
@@ -375,6 +393,14 @@ const changeDisplay = () => {
   }
 }
 
+// 复原输出框
+const refreshPosition = () => {
+  gsap.set('.outputArea',{y:'0',x:'0', width: '50%', height: '30%'})
+  gsap.timeline()
+      .to('.outputArea',{top:'20%',height:'30%'})
+  data.changeArea = false;
+}
+
 // 动态获取输入文本框的 top 值
 const getInputAreaTop = () => {
   const inputElement = document.querySelector('#textInputArea');
@@ -394,6 +420,35 @@ const handleInputBoxClosed = (text) => {
   }
 }
 
+// 处理滚动事件
+const handleScroll = () => {
+  const container = outputAreaRef.value;
+  if (!container) return;
+
+  const { scrollTop, clientHeight, scrollHeight } = container;
+  const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
+  autoScroll.value = isAtBottom; // 离底部50px内视为自动滚动开启
+};
+
+// GSAP控制
+function animateTooltip(action) {
+  const tooltip = document.querySelector('.gsap-tooltip');
+
+  if(action === 'show') {
+    gsap.to(tooltip, {
+      opacity: 1,
+      duration: 0.3,
+      onUpdate: () => {
+        // 实时跟随鼠标
+        const mouseX = event.clientX + 15;
+        const mouseY = event.clientY + 15;
+        gsap.set(tooltip, { x: mouseX, y: mouseY });
+      }
+    });
+  } else {
+    gsap.to(tooltip, { opacity: 0, duration: 0.2 });
+  }
+}
 onMounted(() => {
   // 加载监听器
   window.addEventListener('resize', updatePosition);
@@ -404,6 +459,16 @@ onMounted(() => {
       .to('.image1',{opacity:0,scale:0.75,duration:3,ease:'none'})
       .to('.image2',{opacity:1,scale:1,duration:3,ease:'none'})
       .to('.image2',{opacity:0,scale:0.75,duration:3,ease:'none'})
+
+  // 拖动动画
+  Draggable.create(".outputArea",{
+    bounds:'.LLM-input-output',
+    inertia:true,
+    edgeResistance: 1,
+    onDragEnd: function () {
+      console.log('当前位置：',this.x,this.y);
+    }
+  });
 
   // 加载 Live2D
   loadLive2D();
@@ -420,6 +485,7 @@ onMounted(() => {
             .from('.section2',{y:'+=100',opacity:0},"<")
   });
 
+  // 渲染知识图谱
   async function renderKnowledgeGraph() {
     const driver = neo4j.driver(
         "bolt://localhost:7687",
@@ -551,7 +617,7 @@ onMounted(() => {
     }
   }
 
-// 标签颜色映射函数
+  // 标签颜色映射函数
   function getColorByLabel(label) {
     const colorMap = {
       Topic: '#FF6B6B',
@@ -563,14 +629,10 @@ onMounted(() => {
     return colorMap[label] || '#C0C0C0';
   }
 
-// 执行渲染
+  // 执行渲染
   renderKnowledgeGraph();
 });
 
-onBeforeUnmount(() => {
-  localStorage.setItem('scrollPosition',window.scrollY);
-  localStorage.setItem('route',router.currentRoute.value.path);
-})
 
 // 组件卸载时销毁 WebGL 资源，停止对话
 onUnmounted(() => {
@@ -593,7 +655,11 @@ const scrollToBottom = () => {
 
 // 在消息更新后调用
 watch(() => conversation.value, () => {
-  nextTick(scrollToBottom);
+  nextTick(() => {
+    if (autoScroll.value) {
+      scrollToBottom()
+    }
+  });
 }, { deep: true })
 
 // 自动调整行高
@@ -606,13 +672,23 @@ watch(() => data.textInput, () => {
   });
 }, { deep: true });
 
+// 添加滚动监听
+watch(() => data.displayEverything, () => {
+  nextTick(() => {
+    if (data.displayEverything) {
+      outputAreaRef.value?.addEventListener('scroll', handleScroll);
+    } else {
+      outputAreaRef.value?.removeEventListener('scroll', handleScroll);
+    }
+  })
+})
 </script>
 
 <style scoped>
 /* 标签展示框 */
 .tag-container {
   position: fixed;
-  bottom: 15%;
+  bottom: 11%;
   left: 25%;
   width: 52%;
   gap: 8px;
@@ -626,6 +702,17 @@ watch(() => data.textInput, () => {
   display: none;
 }
 
+/* 输入输出区域 */
+.LLM-input-output {
+  position: fixed;
+  top: -20%;
+  left: -50%;
+  width: 195%;
+  height: 140%;
+  z-index: 11;
+  pointer-events: none;
+}
+
 /* 用户输入框 */
 :deep(.el-textarea__inner) {
   border-radius: 12px !important;
@@ -634,7 +721,7 @@ watch(() => data.textInput, () => {
 }
 .inputArea {
   position: fixed;
-  bottom: 10%;
+  bottom: 8%;
   left: 25%;
   width: 52%;
   font-size: 16px;
@@ -642,6 +729,7 @@ watch(() => data.textInput, () => {
   z-index: 11;
   display: none;
   opacity: 0;
+  pointer-events: auto;
 }
 :deep(.el-textarea__inner) {
   padding: 10px 25px 35px 15px; /* 调整这个值来控制文字与边框的间距 */
@@ -650,7 +738,7 @@ watch(() => data.textInput, () => {
 /* 输入按钮 */
 .submit-btn,.stop-btn {
   position: fixed;
-  bottom: 11%;
+  bottom: 9%;
   right: 24%;
   width: 30px;
   height: 30px;
@@ -663,6 +751,7 @@ watch(() => data.textInput, () => {
   z-index: 12;
   display: none;
   opacity: 0;
+  pointer-events: auto;
 }
 /* 终止按钮 */
 .stop-btn {
@@ -702,6 +791,19 @@ watch(() => data.textInput, () => {
   display: none;
   opacity: 0;
   background-color: rgba(0,0,0,.8);
+  pointer-events: auto;
+}
+
+/* 悬停提示文字 */
+.gsap-tooltip {
+  position: fixed;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  rotate: -90deg;
 }
 
 /* Live2D */
@@ -716,16 +818,29 @@ canvas {
 /* 便捷标签容器 */
 .convenient-tags-container {
   position: fixed;
-  top: 21%;
-  right: 24%;
-  z-index: 12;
+  bottom: 21%;
+  right: 10%;
+  z-index: 101;
+  width: 150px;
+  height: 35px;
+  border-radius: 30px;
+  rotate: 90deg;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0d0f1a;
 }
 
 /* 便捷标签 */
-.zoom-outputArea-btn {
-  padding: 7px;
-  height: auto;
+.zoom-outputArea-btn,.refresh-outputArea-btn {
+  padding: 6px;
+  height: 30px;
+  width: 30px;
   border-radius: 100%;
+  justify-content: center;
+  align-items: center;
+  top: 21%;
+  rotate: -90deg;
 }
 
 /* 公共容器 */

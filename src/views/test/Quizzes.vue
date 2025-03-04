@@ -1,62 +1,180 @@
 <template>
-  <div style="position:absolute;top: 0; left: 43%;width: 52%;height: 100%">
-    <div>
-      <el-button type="primary" class="fold-button" @click="handleFoldButton">点击展开&nbsp;&nbsp;
-        <el-icon class="arrow-down-icon"><ArrowDown /></el-icon>
-      </el-button>
-    </div>
-    <think class="thinking-detail">这里是think标签</think>
+  <div class="markdown-container">
+    <div v-html="renderedContent"></div>
   </div>
 </template>
 
 <script setup>
-import {ref} from "vue";
+import { ref, onMounted } from 'vue';
+import { marked } from 'marked';
+import DOMPurify from "dompurify";
 
-const isRotated = ref(false);
+// 配置marked.js
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+  tables: true,
+});
 
-const handleFoldButton = () => {
-  // 旋转icon
-  const arrowIcon = document.querySelector('.arrow-down-icon');
+// Markdown内容
+const mdContent = ref(`
+## 智绘山河
 
-  if (!isRotated.value) {
-    arrowIcon.style.transform = 'rotate(180deg)';
-    isRotated.value = true;
-  } else {
-    arrowIcon.style.transform = 'rotate(0deg)';
-    isRotated.value = false;
-  }
+——基于人工智能的个性化地理学习平台
 
-  // 设置展示
-  const thinkingDetail = document.querySelector('.thinking-detail');
+---
 
-  if (isRotated.value) {
-    thinkingDetail.style.height = 'auto';
-    const { height } = thinkingDetail.getBoundingClientRect();
-    thinkingDetail.style.height = 0;
-    thinkingDetail.style.transition = '0.5s';
-    thinkingDetail.getBoundingClientRect();
-    thinkingDetail.style.padding = '12px 10px';
-    thinkingDetail.style.height = height + 'px';
-  } else {
-    thinkingDetail.style.height = 0;
-    thinkingDetail.style.padding = '0 10px';
-  }
-}
+### 摘要
+
+随着人工智能技术的快速发展，教育领域正经历一场深刻的变革。高中地理作为一门综合性学科，学生普遍面临知识体系繁杂、理解难度高、学习方式单一等问题。针对这一痛点，“智绘山河”项目旨在通过融合人工智能、3D可视化和知识图谱等技术，构建一个智能化、个性化的地理学习平台。
+
+本论文阐述了“智绘山河”的研究背景与意义、关键技术路线及目前进展。通过对现有教育技术的分析，明确了项目的创新点和目标：帮助学生建立完整的地理知识体系，提供沉浸式的学习体验，并实现从了解到巩固的完整学习闭环。
+
+---
+
+### 1. 引言
+
+#### 1.1 项目背景与研究意义
+
+高中地理课程涉及自然地理、人文地理、区域地理等多个领域，知识点繁多且相互关联性强。学生在学习过程中常面临以下问题：
+
+- **知识体系繁杂**：地理知识点多而散，缺乏系统性的整合和梳理；
+- **理解难度高**：抽象概念（如气候类型、地形地貌）难以直观呈现；
+- **学习方式单一**：传统课堂以教师讲授为主，缺乏互动性和趣味性。
+
+基于以上痛点，“智绘山河”项目提出了一种全新的解决方案——通过人工智能技术与地理教育的深度融合，打造一个智能化、个性化的学习平台。
+
+#### 1.2 现状分析
+
+近年来，国内外在教育技术领域取得了显著进展：
+
+- 国内部分高校和企业开始探索基于AI的个性化学习系统（如智能题库、自适应学习平台）；
+- 国际上，Intelligent Tutoring System（ITS）和OpenAI等技术为教育智能化提供了重要支持。
+
+然而，现有系统仍存在以下不足：
+
+- **缺乏互动性**：多以单向知识传递为主，难以激发学生的学习兴趣；
+- **个性化程度不足**：推荐算法简单，无法精准匹配学生的学习需求；
+- **知识点针对性不强**：对地理学科的特殊性和复杂性关注不够。
+
+#### 1.3 研究目的与意义
+
+“智绘山河”项目的目标是通过AI技术与可视化手段，解决高中地理学习中的核心问题。具体而言：
+
+- 帮助学生建立完整的地理知识体系；
+- 提供沉浸式的学习体验，实现从了解到巩固的完整闭环；
+- 为教师提供智能化的教学工具和数据分析支持。
+
+---
+
+### 2. 研究内容与技术路线
+
+#### 2.1 平台总体架构
+
+“智绘山河”平台由四个核心模块组成：
+
+| 模块名称     | 功能概述           | 核心技术             |
+| ------------ | ------------------ | -------------------- |
+| **智绘天地** | 3D可视化交互地理   | Three.js + Cesium.js |
+| **知象图谱** | 知识图谱展示及问答 | Neo4j + LLM API      |
+| **探知问学** | 在线智能测评       | Django + AI分析      |
+| **智荐学堂** | 个性化学习推荐     | AI推荐算法 + API     |
+
+#### 2.2 关键技术路线
+
+平台的技术路线涵盖了前端开发、后端管理、可视化引擎和AI集成等多方面：
+
+| 技术类别       | 具体工具                 | 应用场景                 |
+| -------------- | ------------------------ | ------------------------ |
+| **前端开发**   | Vue3 + GSAP              | 页面动态交互、动画特效   |
+| **后端开发**   | Django + DRF             | 用户数据管理、API开发    |
+| **可视化引擎** | Three.js + Leaflet.js    | 3D地球交互、星系模拟展示 |
+| **知识图谱**   | Neo4j                    | 地理知识关联展示         |
+| **AI问答**     | Deepseek API + CosyVoice | LLM对话及语音生成        |
+| **数据存储**   | MySQL                    | 用户信息、历史记录       |
+
+---
+
+### 3. 目前进展
+
+#### 3.1 模块完成度与主要成果
+
+目前，“智绘山河”项目已完成部分功能开发，各模块的进展如下：
+
+|   模块名称   | 主要成果                           |
+| :----------: | ---------------------------------- |
+| **智绘天地** | 地形、月相、星系展示等3D可视化功能 |
+| **知象图谱** | 知识图谱初版 + LLM问答功能         |
+| **探知问学** | 试题系统数据库搭建 + 筛选功能      |
+| **智荐学堂** | AI推荐初版接口                     |
+
+#### 3.2 核心技术实现
+
+- **前端交互**：利用Vue3和GSAP实现了页面的动态效果，提升了用户体验；
+- **知识图谱构建**：基于Neo4j完成了地理知识点的关联展示，并集成了LLM问答功能；
+- **个性化推荐**：初步实现了AI推荐算法接口，能够根据学生的学习数据提供学习建议。
+
+---
+
+### 4. 主要创新点
+
+1. **技术融合**：将人工智能、3D可视化和知识图谱技术深度融合，打造沉浸式地理学习体验。
+2. **个性化路径**：针对高中生的差异化需求，构建完整的地理学习闭环（从知识获取到巩固练习）。
+3. **实时问答与推荐**：基于Neo4j知识图谱和LLM大模型，提供即时解答和个性化学习资源推荐。
+4. **语音交互增强**：引入本地部署的CosyVoice语音合成技术，提升学生与平台的互动体验。
+
+
+
+### 5. 下一步计划
+
+1. **完善API接口**：打通前端与后端的交互逻辑，确保数据流畅通。
+2. **优化推荐算法**：调整AI推荐算法的权重，提升学习路径的精准度。
+3. **丰富问答功能**：集成情感分析模块，增强LLM对话的自然性和亲和力。
+4. **提升可视化性能**：优化3D模型渲染效果，降低运行时延迟。
+
+---
+
+### 6. 参考文献
+
+（待补充）
+`);
+
+// 渲染后的HTML内容
+const renderedContent = ref('');
+
+onMounted(() => {
+  // 执行Markdown解析
+  renderedContent.value = DOMPurify.sanitize(marked.parse(mdContent.value));
+});
 </script>
 
 <style scoped>
-/* 自定义 think 标签样式 */
-
-
-.fold-button,.fold-button:hover {
-  background: transparent;
-  border: none;
-  color: rgba(0,0,0,0.8);
+.markdown-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
 }
-.fold-button:hover {
-  color: rgba(0,0,0,0.5);
+
+/* 深度选择器处理子元素样式 */
+:deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
 }
-.arrow-down-icon {
-  transition: transform 0.3s ease;
+
+:deep(th) {
+  background-color: #f5f5f5;
+  padding: 12px;
+  text-align: left;
+}
+
+:deep(td) {
+  padding: 12px;
+  border-top: 1px solid #ddd;
+}
+
+:deep(h3) {
+  color: #2c3e50;
+  margin-bottom: 1em;
 }
 </style>

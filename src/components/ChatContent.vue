@@ -2,7 +2,7 @@
 import 'github-markdown-css/github-markdown-dark.css';
 import { marked } from 'marked'
 import DOMPurify from "dompurify";
-import { computed, ref, reactive, onMounted, onUpdated } from "vue";
+import { computed, ref, reactive, onMounted, onUpdated, watch, onUnmounted } from "vue";
 import hljs from 'highlight.js'
 import 'highlight.js/styles/dark.css'
 
@@ -15,45 +15,47 @@ const props = defineProps({
   showCursor: {
     type: Boolean,
     default: false,
+  },
+  isFolded: {
+    type: Boolean,
+    default: false,
+  },
+  index: {
+    type: Number,
+    required: true
   }
 });
 
-const isRotated = ref(false);
-const handleFoldButton = () => {
-  // 旋转icon
-  const arrowIcon = document.querySelector('.arrow-down-icon');
+// 新增响应式状态
+const startTime = ref(null)
+const endTime = ref(null) // 新增结束时间戳
+const displayDuration = ref(0)
+const timer = ref(null)
 
-  if (!isRotated.value) {
-    arrowIcon.style.transform = 'rotate(180deg)';
-    isRotated.value = true;
-  } else {
-    arrowIcon.style.transform = 'rotate(0deg)';
-    isRotated.value = false;
-  }
-
+const isExpanded = ref(!props.isFolded);
+const isThinking = ref(false);
+const handleFoldButton = (identifier) => {
+  isExpanded.value = !isExpanded.value;
   // 设置展示
-  const thinkingDetail = document.querySelector('.thinking-detail');
+  const thinkingDetail = document.querySelector(identifier);
 
-  if (isRotated.value) {
+  if (isExpanded.value) {
     thinkingDetail.style.height = 'auto';
     const { height } = thinkingDetail.getBoundingClientRect();
-    thinkingDetail.style.height = 0;
-    thinkingDetail.style.transition = '0.5s';
+    thinkingDetail.style.height = '0';
     thinkingDetail.getBoundingClientRect();
     thinkingDetail.style.padding = '12px 10px';
-    thinkingDetail.style.height = height + 'px';
+    if (isThinking.value) {
+      thinkingDetail.style.height = 'auto';
+    } else {
+      thinkingDetail.style.height = (height + 24) + 'px';
+    }
   } else {
-    thinkingDetail.style.height = 0;
+    thinkingDetail.getBoundingClientRect();
+    thinkingDetail.style.height = '0';
     thinkingDetail.style.padding = '0 10px';
   }
 }
-
-// 允许 think 标签
-DOMPurify.addHook('uponSanitizeElement', (node, data) => {
-  if (data.tagName === 'think') {
-    data.allowed = true;
-  }
-});
 
 // 设置代码属性
 marked.setOptions({
@@ -65,40 +67,49 @@ marked.setOptions({
   }
 });
 
-// 处理markdown格式文本
-const markdownContent = computed(() => {
-  if (props.content) {
-    if (props.content.includes("<think>")) {
-      const reducedContent = props.content.replace('<think>','');
-      if (reducedContent.includes("</think>")) {
-        const resArr = reducedContent.split("</think>")
-        const thinkingStr = `
-      <div style="position: relative;top: 0;left: 0;width: 100%;height: 100%;">
-          <div>
-            <el-button type="primary" class="fold-button"
-            @click="handleFoldButton">点击展开&nbsp;&nbsp;
-            <el-icon class="arrow-down-icon"><ArrowDown/></el-icon>
-          </el-button>
-         </div>
-         <div class="thinking-container">
-              <think class="thinking-detail">${resArr[0]}</think>
-         </div>
-      </div>`
-        console.log(`thinkingStr: ${thinkingStr}`);
-        return thinkingStr + DOMPurify.sanitize(marked.parse(resArr[1]));
-      } else {
-        const thinkingStr = `
-      <div>
-        <think class="thinking-detail">${reducedContent}</think>
-      </div>`
-
-        return thinkingStr;
-      }
-    } else {
-      return DOMPurify.sanitize(marked.parse(props.content));
-    }
-  }
+marked.setOptions({
+  gfm: true,        // 启用GitHub风格
+  tables: true,     // 明确启用表格
+  breaks: true      // 将换行符转为<br>
 });
+
+// 内容解析计算属性
+const parsedContent = computed(() => {
+  const result = {
+    hasThinking: false,
+    thinking: '',
+    main: props.content
+  }
+  if (!props.content.includes('<think>')) return result
+
+  try {
+    const cleaned = props.content.replace('<think>', '')
+    const splitIndex = cleaned.indexOf('</think>')
+    console.log(`cleaned = ${cleaned},splitIndex = ${splitIndex}`)
+
+    if (splitIndex === -1) {
+      isThinking.value = true
+      result.hasThinking = true
+      result.thinking = cleaned
+      result.main = ''
+    } else {
+      isThinking.value = false
+      result.hasThinking = true
+      result.thinking = cleaned.slice(0, splitIndex)
+      result.main = cleaned.slice(splitIndex + ''.length)
+    }
+  } catch (e) {
+    console.error('解析错误:', e)
+  }
+  console.log(result.thinking)
+  return result
+})
+
+// 处理markdown格式文本
+const processedContent = computed(() => ({
+  thinking: DOMPurify.sanitize(marked.parse(parsedContent.value.thinking)),
+  main: DOMPurify.sanitize(marked.parse(parsedContent.value.main))
+}))
 
 // 响应式光标
 const pos = reactive({x: 0, y: 0});
@@ -138,32 +149,180 @@ const updateCursor = () => {
   range.setEnd(textNode,0);
   const rect = range.getBoundingClientRect();
   pos.x = rect.left - domRect.left;
-  pos.y = rect.top - domRect.top - 4;
+  const thinkDom = document.getElementById(`thinking${props.index}`);
+  if (thinkDom && parsedContent.value.main) {
+    pos.y = rect.top - domRect.top + thinkDom.getBoundingClientRect().height + 62;
+  } else if (thinkDom) {
+    pos.y = rect.top - domRect.top + 45;
+  } else {
+    pos.y = rect.top - domRect.top - 4;
+    pos.x = rect.left - domRect.left + 82;
+  }
   textNode.remove();
 };
 onMounted(updateCursor);
 onUpdated(updateCursor);
+
+// 修改后的监听逻辑
+watch(() => props.content, (newVal) => {
+  if (!newVal) return
+
+  // 检测结束标记
+  if (newVal.includes('</think>')) {
+    handleContentEnd()
+    return
+  }
+
+  // 仅在未结束时检测起始
+  if (!endTime.value) {
+    const isValidStart = /[^\s]/.test(newVal) || newVal.includes('<think>')
+
+    if (!startTime.value && isValidStart) {
+      startTimer()
+    }
+  }
+})
+
+// 启动计时逻辑拆分
+const startTimer = () => {
+  startTime.value = performance.now()
+  endTime.value = null // 重置结束时间
+  timer.value = setInterval(() => {
+    // 优先使用结束时间计算
+    const end = endTime.value || performance.now()
+    displayDuration.value = end - startTime.value
+  }, 100)
+}
+
+// 处理结束标记
+const handleContentEnd = () => {
+  if (!endTime.value) {
+    endTime.value = performance.now()
+    clearInterval(timer.value)
+    timer.value = null
+  }
+}
+
+// 格式化显示使用最终时间
+const formatDuration = (ms) => {
+  if (endTime.value) { // 结束时锁定显示
+    const finalMs = endTime.value - startTime.value
+    return finalMs < 1000 ?
+        `${Math.round(finalMs)}ms` :
+        `${(finalMs/1000).toFixed(1)}s`
+  }
+  return ms < 1000 ?
+      `${Math.round(ms)}ms` :
+      `${(ms/1000).toFixed(1)}s`
+}
+
+// 清理定时器
+onUnmounted(() => {
+  clearInterval(timer.value)
+  timer.value = null
+})
 </script>
 
 <template>
   <div class="chat-content-container">
-    <div class="markdown-body" v-html="markdownContent" ref="contentRef"></div>
-    <div v-show="showCursor" class="cursor"></div>
+    <div class="markdown-body">
+      <div v-if="!parsedContent.hasThinking && !props.content">
+        正在加载中
+      </div>
+      <template v-if="parsedContent.hasThinking">
+        <div class="thinking-container">
+          <el-button type="primary" class="fold-button" @click="handleFoldButton(`#thinking${props.index}`)">
+            <span style="font-size: 16px">{{ isExpanded ? '收起思考过程' : '展开思考过程' }}</span>
+            <span v-if="displayDuration > 0" class="time-badge">
+              （{{ formatDuration(displayDuration) }}）
+            </span>
+            <el-icon :class="['arrow-down-icon', { rotated: isExpanded }]">
+              <ArrowDown/>
+            </el-icon>
+          </el-button>
+          <div class="thinking-container">
+            <div :class="['thinking-detail','think']" :id="`thinking${props.index}`" ref="contentRef">
+              <div v-html="processedContent.thinking"></div>
+            </div>
+          </div>
+          <div v-if="parsedContent.main"
+               v-html="processedContent.main"
+               ref="contentRef"></div>
+        </div>
+      </template>
+      <div v-else v-html="processedContent.main" ref="contentRef"></div>
+      <div v-show="showCursor" class="cursor"></div>
+    </div>
   </div>
 </template>
 
 <style>
-/* 新增样式 */
+/* 新增时间标记样式 */
+.time-badge {
+  margin-left: 8px;
+  font-size: 0.85em;
+  color: #666;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: opacity 0.2s;
+}
+
+/* 修改边距 */
+.markdown-body p {
+  margin-bottom: 0;
+}
+.think p {
+  margin-bottom: 1em;
+}
+
+/* 修改表格背景色 */
+.markdown-body table th, .markdown-body table td {
+  background-color: antiquewhite;
+}
+
+/* 保证关闭时不显示任何内容 */
 .thinking-container {
   overflow: hidden;
   transition: 0.5s ease;
 }
 
+/* 思考内容 */
 .thinking-detail {
   padding: 12px 10px;
   box-sizing: border-box; /* 确保padding计入高度 */
+  transition: all 0.5s ease;
 }
 
+/* 自定义think标签 */
+.think {
+  display: block;
+  margin: 16px 0;
+  padding: 12px 10px;
+  background: rgba(138, 99, 210, 0.1);
+  border-left: 4px solid #8a63d2;
+  color: #6c4298;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  width: inherit;
+  left: inherit;
+}
+
+.think::before {
+  content: "💡 思考中...";
+  font-weight: bold;
+  color: #8a63d2;
+  display: block;
+  font-style: italic;
+}
+
+.think.active {
+  height: auto;
+  padding: 12px 10px;
+  opacity: 1;
+}
+
+/* 折叠按钮 */
 .fold-button,.fold-button:hover {
   background: transparent;
   border: none;
@@ -174,6 +333,11 @@ onUpdated(updateCursor);
 }
 .arrow-down-icon {
   transition: transform 0.3s ease;
+  margin-left: 8px;
+}
+
+.arrow-down-icon.rotated {
+  transform: rotate(180deg);
 }
 
 /* markdown内容 */
@@ -182,7 +346,7 @@ onUpdated(updateCursor);
   line-height: 2;
   font-family: 'Roboto Mono',serif;
   color: #000; /* 调亮正常文本颜色 */
-  font-weight: bold;
+  margin-bottom: 0;
 }
 
 /* 调整思考内容中的代码块 */

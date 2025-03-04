@@ -95,7 +95,7 @@
       <!--    智绘天地介绍  -->
       <div class="page2">
         <h2 class="section2-title">直观可视化，探索地理奥秘</h2>
-        <div class="step-item">Step 1: 了解</div>
+        <div class="step-item">Step 1: 体验</div>
         <p class="section2-subtitle">沉浸式 3D 体验，让你身临其境</p>
         <p class="section2-text">
           通过智能化的<strong>3D 地形</strong>和<strong>星系展示</strong>模型，用户能够亲身体验地理与天文学的奥秘。在虚拟环境中，学生可以随时与<strong>地球地形</strong>交互，观察<strong>月相盈亏的动态变化</strong>，同时探索<strong>太阳系中行星的轨迹与相对位置</strong>。这种互动式的学习方式突破了传统书本和图表的限制，让知识更加<strong>生动直观</strong>，在沉浸式探索中激发学习兴趣，助力学生提升学习效率。

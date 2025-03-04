@@ -7,7 +7,7 @@
         <button @click="toggleHistory">×</button>
       </div>
       <div class="history-list">
-        <div v-for="(item, index) in chatHistory" :key="index" 
+        <div v-for="(item, index) in chatHistory" :key="index"
              class="history-item" @click="loadHistory(item)">
           <span>{{ item.timestamp }}</span>
           <div class="preview">{{ getHistoryPreview(item.messages) }}</div>

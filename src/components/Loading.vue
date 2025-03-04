@@ -65,7 +65,7 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100vh;
-  z-index: 90;
+  z-index: 900;
   background-color: #0d0f1a;
 }
 
@@ -77,6 +77,6 @@ onMounted(() => {
   width: 13%;
   height: auto;
   transform: translate(-50%, -50%);
-  z-index: 91;
+  z-index: 910;
 }
 </style>
