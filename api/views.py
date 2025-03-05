@@ -2,13 +2,13 @@ from django.http import StreamingHttpResponse
 from django.http import JsonResponse
 import json
 import requests
-from django.views.decorators.csrf import csrf_exempt
 import os
 from dotenv import load_dotenv
+from rest_framework.decorators import api_view
 
 load_dotenv()
-DS_MODDEL = os.environ.get("DS_MODDEL")
-print(DS_MODDEL)
+DS_MODEL = os.environ.get("DS_MODEL")
+print(DS_MODEL)
 DS_KEY = os.environ.get("DS_KEY")
 TXDT_Key = os.environ.get("TXDT_Key")
 
@@ -66,11 +66,8 @@ def sendTX(lat, lng):
         return None
 
 
-@csrf_exempt
+@api_view(['POST'])
 def chat_completion(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-
     try:
         # 解析前端请求数据
         body_data = json.loads(request.body)
@@ -104,7 +101,7 @@ def chat_completion(request):
         "Content-Type": "application/json",
     }
     payload_ds = {
-        "model": f"{DS_MODDEL}",
+        "model": f"{DS_MODEL}",
         "messages": [{"role": "user", "content": msg}],
         "stream": True,
         "max_tokens": 4096,
@@ -131,6 +128,7 @@ def chat_completion(request):
                             break
                         try:
                             data = json.loads(data_str)
+                            print(data["choices"][0]["delta"])
                             chunk_data = (
                                 json.dumps(
                                     {

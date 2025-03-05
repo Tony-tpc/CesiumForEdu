@@ -1,5 +1,7 @@
+import os
 from datetime import timedelta
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,7 +39,7 @@ INSTALLED_APPS = [
     'api.apps.ApiConfig',
 ]
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -54,6 +56,7 @@ MIDDLEWARE = [
 # ]
 #
 CORS_ALLOW_ALL_ORIGINS = True  # 允许所有域（开发阶段）
+CORS_ALLOW_CREDENTIALS = True  # 如果前端需要带cookie，设为True
 
 # 允许的请求方法
 CORS_ALLOW_METHODS = [
@@ -89,14 +92,19 @@ WSGI_APPLICATION = "GeoVisionary_Backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+load_dotenv()
+USER = os.getenv("MYSQL_USER")
+PASSWORD = os.getenv("MYSQL_PASSWORD")
+HOST = os.getenv("MYSQL_HOST")
+PORT = int(os.getenv("MYSQL_PORT"))
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME":"GeoVisionary",# 数据库名称以及相关账户
-        "USER": "root",
-        "PASSWORD": "123456",
-        "HOST": "127.0.0.1",  # 安装MySQL的机器
-        "PORT": 3306,
+        "USER": USER,
+        "PASSWORD": PASSWORD,
+        "HOST": HOST,
+        "PORT": PORT,
     }
 }
 
